@@ -30,9 +30,9 @@ RSpec.describe "Recipes", type: :request do
     browser_get root_path
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("What you have at home")
+    expect(response.body).to include("Type the ingredients you have:")
     expect(response.body).to include("Tonight")
-    expect(response.body).to include("Salt, pepper, and water are assumed")
+    expect(response.body).not_to include("Salt, pepper, and water are assumed")
   end
 
   it "lists matching recipes with a cook-now signal" do
@@ -42,13 +42,13 @@ RSpec.describe "Recipes", type: :request do
     browser_get recipes_path, ingredients: "egg"
 
     expect(response.body).to include("Omelette")
-    expect(response.body).to include(">Cook now<")
-    expect(response.body).to include("20 min")
+    expect(response.body).not_to include(">Cook now<")
+    expect(response.body).to include("You have everything to cook:")
+    expect(response.body).to include("Ready in: 20 minutes")
     expect(response.body).to include(recipe_path(recipe, ingredients: "egg"))
     expect(response.body).to include("See recipe")
     expect(response.body).to include('class="recipe-card"')
-    expect(response.body).to include("You have everything.")
-    expect(response.body).not_to include("Still need:")
+    expect(response.body).not_to include("Extra ingredients:")
     expect(response.body.scan("<h3>Omelette</h3>").size).to eq(1)
     expect(response.body.scan('class="recipe-card"').size).to eq(1)
     expect(response.body).not_to include("Steak")
@@ -62,14 +62,14 @@ RSpec.describe "Recipes", type: :request do
 
     browser_get recipes_path, ingredients: "egg, chicken"
 
-    expect(response.body).to include("<h2>Cook now</h2>")
-    expect(response.body).to include("<h2>Almost there</h2>")
+    expect(response.body).to include("<h2>You have everything to cook:</h2>")
+    expect(response.body).to include("<h2>You still need 1 to 3 extra ingredients to cook:</h2>")
     expect(response.body).not_to include("<h2>Needs more</h2>")
     expect(response.body).to include("Omelette")
     expect(response.body).to include("Stir fry")
     expect(response.body).to include("Curry")
     expect(response.body).not_to include("Feast")
-    expect(response.body).to include("Missing 1")
+    expect(response.body).not_to include("Missing 1")
   end
 
   it "lists near matches with how many ingredients are missing" do
@@ -78,11 +78,11 @@ RSpec.describe "Recipes", type: :request do
     browser_get recipes_path, ingredients: "chicken"
 
     expect(response.body).to include("Stir fry")
-    expect(response.body).to include("Missing 1")
-    expect(response.body).to include("Still need: onion")
-    expect(response.body).to include("<h2>Almost there</h2>")
-    expect(response.body).to include("Missing 1 to 3 ingredients.")
-    expect(response.body).not_to include("<h2>Cook now</h2>")
+    expect(response.body).not_to include("Missing 1")
+    expect(response.body).to include("Extra ingredients: onion")
+    expect(response.body).to include("<h2>You still need 1 to 3 extra ingredients to cook:</h2>")
+    expect(response.body).not_to include("Missing 1 to 3 ingredients.")
+    expect(response.body).not_to include("<h2>You have everything to cook:</h2>")
   end
 
   it "lists pantry staples used by each result" do
@@ -93,17 +93,17 @@ RSpec.describe "Recipes", type: :request do
     expect(response.body).to include("Pantry staples: salt")
   end
 
-  it "explains that staples alone are not a pantry search" do
+  it "does not treat staples alone as a pantry search" do
     create_recipe(title: "Omelette", ingredients: [ "egg", "salt" ])
 
     browser_get recipes_path, ingredients: "salt"
 
-    expect(response.body).to include("Salt, pepper, and water are already assumed")
-    expect(response.body).not_to include("No recipes use that exact name")
+    expect(response.body).not_to include("That ingredient does not appear in any recipe")
     expect(response.body).not_to include("Omelette")
+    expect(response.body).not_to include("Cook now")
   end
 
-  it "shows at most 8 Cook now recipes and skips weaker matches" do
+  it "shows at most 9 cook-now recipes and skips weaker matches" do
     10.times { |i|
       create_recipe(title: "Chicken #{i}", ingredients: [ "chicken" ], prep_time: i + 1, cook_time: 0)
     }
@@ -111,10 +111,10 @@ RSpec.describe "Recipes", type: :request do
 
     browser_get recipes_path, ingredients: "chicken"
 
-    expect(response.body).to include("<h2>Cook now</h2>")
-    expect(response.body).not_to include("<h2>Almost there</h2>")
+    expect(response.body).to include("<h2>You have everything to cook:</h2>")
+    expect(response.body).not_to include("<h2>You still need 1 to 3 extra ingredients to cook:</h2>")
     expect(response.body).not_to include("Almost stew")
-    expect(response.body).not_to include("Chicken 8")
+    expect(response.body).not_to include("Chicken 9")
     expect(response.body).not_to include("Page ")
   end
 
@@ -123,7 +123,17 @@ RSpec.describe "Recipes", type: :request do
 
     browser_get recipes_path, ingredients: "chicken"
 
-    expect(response.body).to include("No recipes use that exact name")
+    expect(response.body).to include("That ingredient does not appear in any recipe. Add another ingredient you already have.")
+    expect(response.body).not_to include("These ingredients do not appear")
+  end
+
+  it "uses plural copy when several names are absent" do
+    create_recipe(title: "Omelette", ingredients: [ "egg" ])
+
+    browser_get recipes_path, ingredients: "chicken, zucchini"
+
+    expect(response.body).to include("These ingredients do not appear in any recipe. Add another ingredient you already have.")
+    expect(response.body).not_to include("That ingredient does not appear")
   end
 
   it "explains when matches exist but need more than three ingredients" do
@@ -131,11 +141,11 @@ RSpec.describe "Recipes", type: :request do
 
     browser_get recipes_path, ingredients: "tomato"
 
-    expect(response.body).to include("Recipes with that ingredient need more than 3 extra ingredients.")
+    expect(response.body).to include("That ingredient is in recipes, but each still needs more than three extra ingredients. Add another ingredient you already have.")
     expect(response.body).not_to include("these ingredients")
     expect(response.body).not_to include("Stew")
     expect(response.body).not_to include("See recipes")
-    expect(response.body).not_to include("No recipes use that exact name")
+    expect(response.body).not_to include("That ingredient does not appear in any recipe")
     expect(response.body).not_to include("<h2>Needs more</h2>")
   end
 
@@ -147,7 +157,7 @@ RSpec.describe "Recipes", type: :request do
 
     browser_get recipes_path, ingredients: "tomato, beef"
 
-    expect(response.body).to include("Recipes with these ingredients need more than 3 extra ingredients.")
+    expect(response.body).to include("These ingredients are in recipes, but each still needs more than three extra ingredients. Add another ingredient you already have.")
     expect(response.body).not_to include("that ingredient")
     expect(response.body).not_to include("Stew")
   end
@@ -166,18 +176,18 @@ RSpec.describe "Recipes", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Omelette")
-    expect(response.body).to include("15 min total")
-    expect(response.body).to include("prep 5 min")
-    expect(response.body).to include("cook 10 min")
+    expect(response.body).to include("Ready in: 15 minutes")
+    expect(response.body).to include("Preparation: 5 minutes")
+    expect(response.body).to include("Cook time: 10 minutes")
     expect(response.body).not_to include("Rated")
     expect(response.body).not_to include("4.5")
     expect(response.body).to include("egg")
-    expect(response.body).to include("<h2>In your pantry</h2>")
+    expect(response.body).to include("<h2>In your pantry:</h2>")
     expect(response.body).to include("egg")
-    expect(response.body).not_to include("<h2>Still to get</h2>")
+    expect(response.body).not_to include("<h2>Extra ingredients:</h2>")
     expect(response.body).not_to include("You have everything")
     expect(response.body).to include(recipes_path(ingredients: "egg"))
-    expect(response.body).to include("Back to results")
+    expect(response.body).to include("Back")
   end
 
   it "splits a recipe into have and missing pantry lists" do
@@ -185,8 +195,8 @@ RSpec.describe "Recipes", type: :request do
 
     browser_get recipe_path(recipe), ingredients: "chicken"
 
-    expect(response.body).to include("<h2>In your pantry</h2>")
-    expect(response.body).to include("<h2>Still to get</h2>")
+    expect(response.body).to include("<h2>In your pantry:</h2>")
+    expect(response.body).to include("<h2>Extra ingredients:</h2>")
     expect(response.body).to include("chicken")
     expect(response.body).to include("salt")
     expect(response.body).to include("onion")
@@ -199,7 +209,7 @@ RSpec.describe "Recipes", type: :request do
 
     browser_get recipes_path, ingredients: "egg"
 
-    expect(response.body).to include("Time not listed")
+    expect(response.body).to include("Ready in: time unknown")
     expect(response.body).to include("recipe-placeholder.svg")
     expect(response.body).to include("this.onerror=null")
   end
@@ -209,10 +219,10 @@ RSpec.describe "Recipes", type: :request do
 
     browser_get recipe_path(recipe)
 
-    expect(response.body).to include("<h2>Ingredients</h2>")
+    expect(response.body).to include("<h2>Extra ingredients:</h2>")
     expect(response.body).to include("egg")
-    expect(response.body).not_to include("<h2>In your pantry</h2>")
-    expect(response.body).to include("Back to search")
+    expect(response.body).not_to include("<h2>In your pantry:</h2>")
+    expect(response.body).to include("Back")
   end
 
   it "returns not found for a missing recipe" do

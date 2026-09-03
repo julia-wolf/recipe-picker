@@ -10,15 +10,18 @@ module ApplicationHelper
       onerror: "this.onerror=null;this.src='#{RECIPE_PHOTO_FALLBACK}'"
     )
   end
-  def recipe_time(recipe, detail: false)
-    total = recipe.total_time
-    return "Time not listed" unless total
-    return "#{total} min" unless detail
+  def recipe_time(recipe)
+    recipe_time_lines(recipe).first
+  end
 
-    parts = [ "#{total} min total" ]
-    parts << "prep #{recipe.prep_time.to_i} min" if recipe.prep_time.to_i.positive?
-    parts << "cook #{recipe.cook_time.to_i} min" if recipe.cook_time.to_i.positive?
-    parts.join(" · ")
+  def recipe_time_lines(recipe)
+    total = recipe.total_time
+    return [ "Ready in: time unknown" ] unless total
+
+    lines = [ "Ready in: #{total} minutes" ]
+    lines << "Preparation: #{recipe.prep_time.to_i} minutes" if recipe.prep_time.to_i.positive?
+    lines << "Cook time: #{recipe.cook_time.to_i} minutes" if recipe.cook_time.to_i.positive?
+    lines
   end
 
   def pantry_entry_count(raw)

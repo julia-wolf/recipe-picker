@@ -2,9 +2,8 @@
   <%= link_to recipe_path(result.recipe, ingredients: @ingredients), class: "recipe-card" do %>
     <%= recipe_photo_tag(result.recipe) %>
     <h3><%= result.recipe.title %></h3>
-    <p class="match-signal"><%= result.match_signal %></p>
     <% if result.missing.any? %>
-      <p>Still need: <%= result.missing.join(", ") %></p>
+      <p>Extra ingredients: <%= result.missing.join(", ") %></p>
     <% end %>
     <% if result.staples.any? %>
       <p>Pantry staples: <%= result.staples.join(", ") %></p>

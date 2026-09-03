@@ -1,30 +1,27 @@
 <p>
-  <%= link_to(
-        @ingredients.present? ? "Back to results" : "Back to search",
-        recipes_path(ingredients: @ingredients)
-      ) %>
+  <%= link_to "Back", recipes_path(ingredients: @ingredients) %>
 </p>
 
 <h1><%= @recipe.title %></h1>
 
 <p><%= recipe_photo_tag(@recipe) %></p>
 
-<p><%= recipe_time(@recipe, detail: true) %></p>
+<% recipe_time_lines(@recipe).each do |line| %>
+  <p><%= line %></p>
+<% end %>
 
 <% if @explanation %>
-  <h2>In your pantry</h2>
   <% if @explanation.have.any? %>
+    <h2>In your pantry:</h2>
     <ul>
       <% @explanation.have.each do |line| %>
         <li><%= line %></li>
       <% end %>
     </ul>
-  <% else %>
-    <p>None of these are in your pantry.</p>
   <% end %>
 
   <% if @explanation.missing.any? %>
-    <h2>Still to get</h2>
+    <h2>Extra ingredients:</h2>
     <ul>
       <% @explanation.missing.each do |line| %>
         <li><%= line %></li>
@@ -32,7 +29,7 @@
     </ul>
   <% end %>
 <% else %>
-  <h2>Ingredients</h2>
+  <h2>Extra ingredients:</h2>
   <ul>
     <% @recipe.recipe_ingredients.each do |line| %>
       <li><%= line.display_text %></li>
