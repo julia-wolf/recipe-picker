@@ -158,7 +158,7 @@ RSpec.describe RecipeMatcher do
       expect(described_class.search("chicken").map(&:recipe)).to eq([ timed, unknown ])
     end
 
-    it "caps Cook now at 8 and does not pad with weaker matches" do
+    it "caps cook-now recipes at 9 and does not pad with weaker matches" do
       10.times { |i|
         create_recipe(title: "Chicken #{i}", ingredients: [ "chicken" ], prep_time: i + 1, cook_time: 0)
       }
@@ -166,24 +166,23 @@ RSpec.describe RecipeMatcher do
 
       results = described_class.search("chicken")
 
-      expect(results.size).to eq(8)
+      expect(results.size).to eq(9)
       expect(results).to all(be_cook_now)
       expect(results.map { |row| row.recipe.title }).not_to include("Almost")
     end
 
-    it "fills leftover slots with at most 3 Almost recipes" do
-      2.times { |i|
-        create_recipe(title: "Exact #{i}", ingredients: [ "chicken" ], prep_time: i + 1, cook_time: 0)
-      }
-      5.times { |i|
+    it "fills leftover slots with almost-ready recipes up to 9" do
+      create_recipe(title: "Exact", ingredients: [ "chicken" ], prep_time: 1, cook_time: 0)
+      10.times { |i|
         create_recipe(title: "Almost #{i}", ingredients: [ "chicken", "onion" ], prep_time: i + 1, cook_time: 0)
       }
       create_recipe(title: "Far", ingredients: [ "chicken", "onion", "garlic", "ginger", "cream" ])
 
       results = described_class.search("chicken")
 
-      expect(results.count(&:cook_now?)).to eq(2)
-      expect(results.count(&:almost?)).to eq(3)
+      expect(results.count(&:cook_now?)).to eq(1)
+      expect(results.count(&:almost?)).to eq(8)
+      expect(results.size).to eq(9)
       expect(results.map { |row| row.recipe.title }).not_to include("Far")
     end
 
@@ -236,7 +235,7 @@ RSpec.describe RecipeMatcher do
       expect(described_class).not_to be_staples_only("")
     end
 
-    it "keeps a hard cap of 8 when mixing Cook now and Almost" do
+    it "keeps a hard cap of 9 when mixing cook-now and almost-ready recipes" do
       6.times { |i|
         create_recipe(title: "Exact #{i}", ingredients: [ "chicken" ], prep_time: i + 1, cook_time: 0)
       }
@@ -247,19 +246,16 @@ RSpec.describe RecipeMatcher do
       results = described_class.search("chicken")
 
       expect(results.count(&:cook_now?)).to eq(6)
-      expect(results.count(&:almost?)).to eq(2)
+      expect(results.count(&:almost?)).to eq(3)
+      expect(results.size).to eq(9)
     end
 
-    it "signals Cook now when nothing is missing" do
+    it "does not put a match count on result cards" do
       create_recipe(title: "Omelette", ingredients: [ "egg" ])
+      create_recipe(title: "Stir fry", ingredients: [ "chicken", "onion", "garlic" ])
 
-      expect(described_class.search("egg").first.match_signal).to eq("Cook now")
-    end
-
-    it "signals how many non-staple ingredients are missing" do
-      create_recipe(title: "Stir fry", ingredients: [ "chicken", "onion", "garlic", "salt" ])
-
-      expect(described_class.search("chicken").first.match_signal).to eq("Missing 2")
+      expect(described_class.search("egg").first).not_to respond_to(:match_signal)
+      expect(described_class.search("chicken").first.missing_count).to eq(2)
     end
 
     it "lists have and missing display text, with staples under have" do

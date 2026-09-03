@@ -11,10 +11,6 @@ class RecipeMatcher
   ].freeze
 
   Result = Struct.new(:recipe, :missing_count, :have, :missing, :staples, keyword_init: true) do
-    def match_signal
-      missing_count.zero? ? "Cook now" : "Missing #{missing_count}"
-    end
-
     def cook_now?
       missing_count.zero?
     end
@@ -24,8 +20,7 @@ class RecipeMatcher
     end
   end
 
-  DECISION_SET_SIZE = 8
-  MAX_ALMOST = 3
+  DECISION_SET_SIZE = 9
   MAX_MISSING = 3
 
   def self.search(query)
@@ -90,7 +85,7 @@ class RecipeMatcher
   def decision_set(results)
     cook_now = results.select(&:cook_now?).first(DECISION_SET_SIZE)
     remaining = DECISION_SET_SIZE - cook_now.size
-    almost = results.select(&:almost?).first([ MAX_ALMOST, remaining ].min)
+    almost = results.select(&:almost?).first(remaining)
     cook_now + almost
   end
 
