@@ -1,0 +1,150 @@
+require "json"
+require "net/http"
+require "stringio"
+require "uri"
+require "zlib"
+
+class RecipeImporter
+  DATASET_URL = "https://pennylane-interviewing-assets-20220328.s3.eu-west-1.amazonaws.com/recipes-en.json.gz".freeze
+
+  def self.import(source = DATASET_URL)
+    new(source).import
+  end
+
+  def initialize(source)
+    @source = source
+  end
+
+  def import
+    payload = JSON.parse(read_json)
+    raise ArgumentError, "Expected an array of recipes" unless payload.is_a?(Array)
+
+    ActiveRecord::Base.transaction do
+      clear!
+      persist(payload)
+    end
+  end
+
+  private
+
+  def read_json
+    bytes = remote? ? fetch_remote : read_local
+    gzip?(bytes) ? Zlib::GzipReader.new(StringIO.new(bytes)).read : bytes
+  end
+
+  def remote?
+    @source.to_s.start_with?("http://", "https://")
+  end
+
+  def read_local
+    path = Pathname(@source)
+    raise ArgumentError, "Missing dataset: #{path}" unless path.exist?
+
+    path.binread
+  end
+
+  def fetch_remote
+    uri = URI.parse(@source.to_s)
+    allowed = URI.parse(DATASET_URL)
+    unless uri.scheme == allowed.scheme && uri.host == allowed.host && uri.path == allowed.path
+      raise ArgumentError, "Remote import only supports the official dataset URL"
+    end
+
+    response = Net::HTTP.get_response(uri)
+    unless response.is_a?(Net::HTTPSuccess)
+      raise ArgumentError, "Could not download dataset (#{response.code}): #{@source}"
+    end
+
+    response.body
+  end
+
+  def gzip?(bytes)
+    bytes.byteslice(0, 2) == "\x1F\x8B".b
+  end
+
+  def clear!
+    RecipeIngredient.delete_all
+    Recipe.delete_all
+    Ingredient.delete_all
+    %w[recipe_ingredients recipes ingredients].each do |table|
+      ActiveRecord::Base.connection.reset_pk_sequence!(table)
+    end
+  end
+
+  def persist(payload)
+    now = Time.current
+    parsed_recipes = payload.filter_map { |row| build_recipe(row, now) }
+    return if parsed_recipes.empty?
+
+    ingredient_rows = unique_ingredient_rows(parsed_recipes, now)
+    Ingredient.insert_all(ingredient_rows, record_timestamps: false) if ingredient_rows.any?
+    ingredient_ids = Ingredient.pluck(:normalized_name, :id).to_h
+
+    inserted = Recipe.insert_all(parsed_recipes.map { |item| item[:recipe] }, returning: %w[id], record_timestamps: false)
+    recipe_ids = inserted.rows.flatten
+
+    join_rows = parsed_recipes.flat_map.with_index do |item, index|
+      item[:lines].filter_map do |line|
+        ingredient_id = ingredient_ids[line[:normalized_name]]
+        next unless ingredient_id
+
+        {
+          recipe_id: recipe_ids[index],
+          ingredient_id: ingredient_id,
+          display_text: line[:display_text],
+          created_at: now,
+          updated_at: now
+        }
+      end
+    end
+
+    RecipeIngredient.insert_all(join_rows, record_timestamps: false) if join_rows.any?
+  end
+
+  def build_recipe(row, now)
+    title = row["title"].to_s.strip
+    return if title.empty?
+
+    lines = Array(row["ingredients"]).filter_map { |raw| build_line(raw) }
+
+    {
+      recipe: {
+        title: title,
+        image_url: row["image"],
+        prep_time: row["prep_time"],
+        cook_time: row["cook_time"],
+        rating: row["ratings"],
+        category: row["category"].presence,
+        author: row["author"].presence,
+        created_at: now,
+        updated_at: now
+      },
+      lines: lines
+    }
+  end
+
+  def build_line(raw)
+    parsed = IngredientParser.parse(raw)
+    normalized_name = IngredientNormalizer.call(parsed.name)
+    return if normalized_name.blank?
+
+    {
+      normalized_name: normalized_name,
+      name: parsed.name,
+      display_text: UnitConverter.display_text(parsed)
+    }
+  end
+
+  def unique_ingredient_rows(parsed_recipes, now)
+    parsed_recipes.each_with_object({}) do |item, unique|
+      item[:lines].each do |line|
+        unique[line[:normalized_name]] ||= {
+          name: line[:name],
+          normalized_name: line[:normalized_name],
+          created_at: now,
+          updated_at: now
+        }
+      end
+    end.values
+  end
+end
