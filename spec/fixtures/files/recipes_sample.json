@@ -1,0 +1,31 @@
+[
+  {
+    "title": "Golden Sweet Cornbread",
+    "cook_time": 25,
+    "prep_time": 10,
+    "ingredients": [
+      "1 cup all-purpose flour",
+      "1 cup cornmeal",
+      "1/4 teaspoon salt"
+    ],
+    "ratings": 4.74,
+    "cuisine": "",
+    "category": "Cornbread",
+    "author": "bluegirl",
+    "image": "https://example.com/cornbread.jpg"
+  },
+  {
+    "title": "Simple Salad",
+    "cook_time": 0,
+    "prep_time": 5,
+    "ingredients": [
+      "1 cup all-purpose flour",
+      "salt to taste"
+    ],
+    "ratings": 4.1,
+    "cuisine": "",
+    "category": "Salad Recipes",
+    "author": "tester",
+    "image": "https://example.com/salad.jpg"
+  }
+]
