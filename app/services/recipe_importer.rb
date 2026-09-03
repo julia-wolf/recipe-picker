@@ -6,6 +6,7 @@ require "zlib"
 
 class RecipeImporter
   DATASET_URL = "https://pennylane-interviewing-assets-20220328.s3.eu-west-1.amazonaws.com/recipes-en.json.gz".freeze
+  BATCH_SIZE = 1_000
 
   def self.import(source = DATASET_URL)
     new(source).import
@@ -77,11 +78,14 @@ class RecipeImporter
     return if parsed_recipes.empty?
 
     ingredient_rows = unique_ingredient_rows(parsed_recipes, now)
-    Ingredient.insert_all(ingredient_rows, record_timestamps: false) if ingredient_rows.any?
+    insert_in_batches(Ingredient, ingredient_rows)
     ingredient_ids = Ingredient.pluck(:normalized_name, :id).to_h
 
-    inserted = Recipe.insert_all(parsed_recipes.map { |item| item[:recipe] }, returning: %w[id], record_timestamps: false)
-    recipe_ids = inserted.rows.flatten
+    recipe_ids = insert_in_batches(
+      Recipe,
+      parsed_recipes.map { |item| item[:recipe] },
+      returning: %w[id]
+    )
 
     join_rows = parsed_recipes.flat_map.with_index do |item, index|
       item[:lines].filter_map do |line|
@@ -98,7 +102,18 @@ class RecipeImporter
       end
     end
 
-    RecipeIngredient.insert_all(join_rows, record_timestamps: false) if join_rows.any?
+    insert_in_batches(RecipeIngredient, join_rows)
+  end
+
+  def insert_in_batches(model, rows, returning: nil)
+    return [] if rows.empty?
+
+    rows.each_slice(BATCH_SIZE).flat_map do |slice|
+      options = { record_timestamps: false }
+      options[:returning] = returning if returning
+      result = model.insert_all(slice, **options)
+      returning ? result.rows.flatten : []
+    end
   end
 
   def build_recipe(row, now)

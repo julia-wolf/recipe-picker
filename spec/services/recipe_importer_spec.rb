@@ -21,6 +21,15 @@ RSpec.describe RecipeImporter do
     expect { described_class.import(Rails.root.join("missing.json")) }.to raise_error(ArgumentError, /Missing dataset/)
   end
 
+  it "keeps recipe ids aligned when inserting in small batches" do
+    stub_const("#{described_class}::BATCH_SIZE", 1)
+
+    described_class.import(dataset)
+
+    expect(Recipe.find_by!(title: "Golden Sweet Cornbread").recipe_ingredients.count).to eq(3)
+    expect(Recipe.find_by!(title: "Simple Salad").recipe_ingredients.count).to eq(2)
+  end
+
 
   it "rejects a remote URL that is not the official dataset" do
     expect {
