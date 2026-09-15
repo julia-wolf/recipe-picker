@@ -3,7 +3,11 @@ class RecipeMatcher
     IngredientNormalizer.call(name)
   }.uniq.freeze
 
-  Result = Struct.new(:recipe, :missing_count, keyword_init: true)
+  Result = Struct.new(:recipe, :missing_count, keyword_init: true) do
+    def match_signal
+      missing_count.zero? ? "Cook now" : "Missing #{missing_count}"
+    end
+  end
   PAGE_SIZE = 20
 
   def self.search(query, page: 1)

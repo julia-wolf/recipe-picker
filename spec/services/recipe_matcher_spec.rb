@@ -146,5 +146,17 @@ RSpec.describe RecipeMatcher do
       expect(described_class.search("chicken", page: 0).map(&:recipe).first).to eq(first)
       expect(described_class.search("chicken", page: -1).map(&:recipe).first).to eq(first)
     end
+
+    it "signals Cook now when nothing is missing" do
+      create_recipe(title: "Omelette", ingredients: [ "egg" ])
+
+      expect(described_class.search("egg").first.match_signal).to eq("Cook now")
+    end
+
+    it "signals how many non-staple ingredients are missing" do
+      create_recipe(title: "Stir fry", ingredients: [ "chicken", "onion", "garlic", "salt" ])
+
+      expect(described_class.search("chicken").first.match_signal).to eq("Missing 2")
+    end
   end
 end
