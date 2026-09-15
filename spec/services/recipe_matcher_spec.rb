@@ -92,5 +92,26 @@ RSpec.describe RecipeMatcher do
 
       expect(selects).to be <= 5
     end
+
+    it "ranks fewer missing ingredients first" do
+      almost = create_recipe(title: "Almost", ingredients: [ "chicken", "onion" ])
+      exact = create_recipe(title: "Exact", ingredients: [ "chicken" ])
+
+      expect(described_class.search("chicken").map(&:recipe)).to eq([ exact, almost ])
+    end
+
+    it "ranks shorter total time after equal missing counts" do
+      slow = create_recipe(title: "Slow", ingredients: [ "chicken" ], prep_time: 40, cook_time: 20)
+      quick = create_recipe(title: "Quick", ingredients: [ "chicken" ], prep_time: 5, cook_time: 5)
+
+      expect(described_class.search("chicken").map(&:recipe)).to eq([ quick, slow ])
+    end
+
+    it "ranks unknown times after recipes with a total time" do
+      unknown = create_recipe(title: "Unknown", ingredients: [ "chicken" ], prep_time: 0, cook_time: 0)
+      timed = create_recipe(title: "Timed", ingredients: [ "chicken" ], prep_time: 30, cook_time: 0)
+
+      expect(described_class.search("chicken").map(&:recipe)).to eq([ timed, unknown ])
+    end
   end
 end

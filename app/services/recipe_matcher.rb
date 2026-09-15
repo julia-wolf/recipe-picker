@@ -27,9 +27,9 @@ class RecipeMatcher
     matchable = terms - STAPLES
     return [] if matchable.empty?
 
-    recipes_matching(matchable).map do |recipe|
+    recipes_matching(matchable).map { |recipe|
       Result.new(recipe: recipe, missing_count: missing_count_for(recipe, terms))
-    end
+    }.sort_by { |result| [ result.missing_count, time_sort_key(result.recipe) ] }
   end
 
   private
@@ -55,5 +55,9 @@ class RecipeMatcher
 
       terms.exclude?(name)
     end
+  end
+
+  def time_sort_key(recipe)
+    recipe.total_time || Float::INFINITY
   end
 end
