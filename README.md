@@ -1,24 +1,36 @@
-# README
+# Recipe picker
 
-This README would normally document whatever steps are necessary to get the
-application up and running.
+Pennylane take-home: type what you have at home, get ranked recipes from the Allrecipes dataset.
 
-Things you may want to cover:
+## User story
 
-* Ruby version
+**US1 — Find recipes from my pantry.** Enter pantry ingredients, see ranked results (photo, total time, Cook now / Missing N), open a recipe (photo, total + prep/cook, metric-friendly ingredients).
 
-* System dependencies
+## Setup
 
-* Configuration
+```bash
+bin/setup
+bin/rails recipes:import
+bin/rails server
+```
 
-* Database creation
+`recipes:import` downloads the official gzip dataset. If S3 returns 403, download `recipes-en.json` locally (gitignored) and run:
 
-* Database initialization
+```bash
+bin/rails recipes:import[recipes-en.json]
+```
 
-* How to run the test suite
+```bash
+bin/rspec
+```
 
-* Services (job queues, cache servers, search engines, etc.)
+## Ranking
 
-* Deployment instructions
+1. Fewer missing ingredients first (salt, pepper, water, and black pepper are treated as staples and ignored).
+2. Shorter total time (unknown times last).
 
-* ...
+Matching is exact on normalized names (`flour` does not match `all-purpose flour`). Volume becomes ml, mass becomes g. USDA FoodData Central cup weights turn the 15 most common catalog ingredients (flour, sugar, butter, water, oils, and the rest of that list) into grams; everything else stays ml.
+
+## Out of scope for now
+
+Accounts, cooking steps (not in the dataset), fridge photos, cuisine filters.
