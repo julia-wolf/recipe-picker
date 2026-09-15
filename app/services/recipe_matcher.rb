@@ -3,9 +3,17 @@ class RecipeMatcher
     IngredientNormalizer.call(name)
   }.uniq.freeze
 
-  Result = Struct.new(:recipe, :missing_count, keyword_init: true) do
+  Result = Struct.new(:recipe, :missing_count, :have, :missing, keyword_init: true) do
     def match_signal
       missing_count.zero? ? "Cook now" : "Missing #{missing_count}"
+    end
+
+    def cook_now?
+      missing_count.zero?
+    end
+
+    def almost?
+      missing_count.between?(1, 2)
     end
   end
   PAGE_SIZE = 20
@@ -13,6 +21,10 @@ class RecipeMatcher
   def self.search(query, page: 1)
     matcher = new(query, page: page)
     decorate(matcher.search, matcher)
+  end
+
+  def self.explain(recipe, query)
+    new(query).explain(recipe)
   end
 
   def self.staples_only?(query)
@@ -56,8 +68,22 @@ class RecipeMatcher
       recipe = recipes[id]
       next unless recipe
 
-      Result.new(recipe: recipe, missing_count: missing.to_i)
+      have, missing_lines = coverage_for(recipe, terms)
+      Result.new(
+        recipe: recipe,
+        missing_count: missing.to_i,
+        have: have,
+        missing: missing_lines
+      )
     }
+  end
+
+  def explain(recipe)
+    terms = pantry_terms
+    return if (terms - STAPLES).empty?
+
+    have, missing = coverage_for(recipe, terms)
+    Result.new(recipe: recipe, missing_count: missing.size, have: have, missing: missing)
   end
 
   private
@@ -96,5 +122,21 @@ class RecipeMatcher
     return {} if ids.empty?
 
     Recipe.where(id: ids).includes(recipe_ingredients: :ingredient).index_by(&:id)
+  end
+
+  def coverage_for(recipe, terms)
+    have = []
+    missing = []
+
+    recipe.recipe_ingredients.each do |line|
+      name = line.ingredient.normalized_name
+      if STAPLES.include?(name) || terms.include?(name)
+        have << line.display_text
+      else
+        missing << line.display_text
+      end
+    end
+
+    [ have, missing ]
   end
 end

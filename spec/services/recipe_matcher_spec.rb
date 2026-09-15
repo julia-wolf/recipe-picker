@@ -48,19 +48,19 @@ RSpec.describe RecipeMatcher do
       expect(described_class.search("flour").map(&:recipe)).to eq([ exact ])
     end
 
-
     it "matches singular pantry terms to plural recipe ingredients" do
       recipe = create_recipe(title: "Omelette", ingredients: [ "eggs" ])
 
       expect(described_class.search("egg").map(&:recipe)).to eq([ recipe ])
     end
 
-    it "treats a staples-only pantry as not a match query" do
-      expect(described_class).to be_staples_only("salt")
-      expect(described_class).to be_staples_only("black pepper, water")
-      expect(described_class).not_to be_staples_only("chicken")
-      expect(described_class).not_to be_staples_only("")
+    it "ignores a leading amount on a pantry term" do
+      recipe = create_recipe(title: "Omelette", ingredients: [ "eggs" ])
+
+      expect(described_class.search("6 eggs").map(&:recipe)).to eq([ recipe ])
+      expect(described_class.search("6eggs").map(&:recipe)).to eq([ recipe ])
     end
+
     it "counts missing non-staple ingredients" do
       recipe = create_recipe(title: "Stir fry", ingredients: [ "chicken", "onion", "salt" ])
 
@@ -139,6 +139,13 @@ RSpec.describe RecipeMatcher do
       expect(described_class.search("chicken", page: 2)).not_to be_has_next
     end
 
+    it "treats a staples-only pantry as not a match query" do
+      expect(described_class).to be_staples_only("salt")
+      expect(described_class).to be_staples_only("black pepper, water")
+      expect(described_class).not_to be_staples_only("chicken")
+      expect(described_class).not_to be_staples_only("")
+    end
+
     it "treats invalid pages as the first page" do
       first = create_recipe(title: "First", ingredients: [ "chicken" ], prep_time: 5, cook_time: 0)
       create_recipe(title: "Second", ingredients: [ "chicken" ], prep_time: 50, cook_time: 0)
@@ -157,6 +164,37 @@ RSpec.describe RecipeMatcher do
       create_recipe(title: "Stir fry", ingredients: [ "chicken", "onion", "garlic", "salt" ])
 
       expect(described_class.search("chicken").first.match_signal).to eq("Missing 2")
+    end
+
+    it "lists have and missing display text, with staples under have" do
+      create_recipe(title: "Stir fry", ingredients: [ "chicken", "onion", "salt" ])
+
+      result = described_class.search("chicken").first
+
+      expect(result.have).to eq([ "chicken", "salt" ])
+      expect(result.missing).to eq([ "onion" ])
+      expect(result).to be_almost
+      expect(result).not_to be_cook_now
+    end
+  end
+
+  describe ".explain" do
+    it "returns nil when the pantry has no matchable ingredients" do
+      recipe = create_recipe(title: "Omelette", ingredients: [ "egg" ])
+
+      expect(described_class.explain(recipe, "")).to be_nil
+      expect(described_class.explain(recipe, "salt")).to be_nil
+    end
+
+    it "explains have and missing for a recipe without ranking" do
+      recipe = create_recipe(title: "Stir fry", ingredients: [ "chicken", "onion", "salt" ])
+
+      result = described_class.explain(recipe, "chicken")
+
+      expect(result.recipe).to eq(recipe)
+      expect(result.missing_count).to eq(1)
+      expect(result.have).to eq([ "chicken", "salt" ])
+      expect(result.missing).to eq([ "onion" ])
     end
   end
 end
