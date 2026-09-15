@@ -1,5 +1,6 @@
 require "json"
 require "net/http"
+require "openssl"
 require "stringio"
 require "uri"
 require "zlib"
@@ -51,12 +52,29 @@ class RecipeImporter
       raise ArgumentError, "Remote import only supports the official dataset URL"
     end
 
-    response = Net::HTTP.get_response(uri)
+    response = http_get(uri, ssl_ca_file)
     unless response.is_a?(Net::HTTPSuccess)
       raise ArgumentError, "Could not download dataset (#{response.code}): #{@source}"
     end
 
     response.body
+  end
+
+  def http_get(uri, ca_file)
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.use_ssl = true
+    http.verify_mode = OpenSSL::SSL::VERIFY_PEER
+    http.ca_file = ca_file if ca_file
+    http.request(Net::HTTP::Get.new(uri))
+  end
+
+  def ssl_ca_file
+    [
+      ENV["SSL_CERT_FILE"],
+      (OpenSSL::X509::DEFAULT_CERT_FILE rescue nil),
+      "/usr/local/etc/ca-certificates/cert.pem",
+      "/etc/ssl/cert.pem"
+    ].compact.find { |path| File.file?(path) }
   end
 
   def gzip?(bytes)
