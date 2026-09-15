@@ -113,5 +113,38 @@ RSpec.describe RecipeMatcher do
 
       expect(described_class.search("chicken").map(&:recipe)).to eq([ timed, unknown ])
     end
+
+    it "returns at most 20 recipes per page" do
+      21.times { |i|
+        create_recipe(title: "Chicken #{i}", ingredients: [ "chicken" ], prep_time: i + 1, cook_time: 0)
+      }
+
+      expect(described_class.search("chicken").size).to eq(20)
+    end
+
+    it "returns later ranked recipes on the next page" do
+      recipes = 21.times.map { |i|
+        create_recipe(title: "Chicken #{i}", ingredients: [ "chicken" ], prep_time: i + 1, cook_time: 0)
+      }
+
+      expect(described_class.search("chicken", page: 2).map(&:recipe)).to eq([ recipes.last ])
+    end
+
+    it "signals when another page of matches exists" do
+      21.times { |i|
+        create_recipe(title: "Chicken #{i}", ingredients: [ "chicken" ], prep_time: i + 1, cook_time: 0)
+      }
+
+      expect(described_class.search("chicken")).to be_has_next
+      expect(described_class.search("chicken", page: 2)).not_to be_has_next
+    end
+
+    it "treats invalid pages as the first page" do
+      first = create_recipe(title: "First", ingredients: [ "chicken" ], prep_time: 5, cook_time: 0)
+      create_recipe(title: "Second", ingredients: [ "chicken" ], prep_time: 50, cook_time: 0)
+
+      expect(described_class.search("chicken", page: 0).map(&:recipe).first).to eq(first)
+      expect(described_class.search("chicken", page: -1).map(&:recipe).first).to eq(first)
+    end
   end
 end

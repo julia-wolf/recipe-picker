@@ -4,18 +4,35 @@ class RecipeMatcher
   }.uniq.freeze
 
   Result = Struct.new(:recipe, :missing_count, keyword_init: true)
+  PAGE_SIZE = 20
 
-  def self.search(query)
-    new(query).search
+  def self.search(query, page: 1)
+    matcher = new(query, page: page)
+    decorate(matcher.search, matcher)
   end
 
   def self.staples_only?(query)
     new(query).staples_only?
   end
 
-  def initialize(query)
-    @query = query
+  def self.decorate(results, matcher)
+    results.define_singleton_method(:page) { matcher.page }
+    results.define_singleton_method(:has_next?) { matcher.has_next? }
+    results
   end
+  private_class_method :decorate
+
+  def initialize(query, page: 1)
+    @query = query
+    @page = [ page.to_i, 1 ].max
+    @has_next = false
+  end
+
+  def has_next?
+    @has_next
+  end
+
+  attr_reader :page
 
   def staples_only?
     terms = pantry_terms
@@ -27,9 +44,16 @@ class RecipeMatcher
     matchable = terms - STAPLES
     return [] if matchable.empty?
 
-    recipes_matching(matchable).map { |recipe|
-      Result.new(recipe: recipe, missing_count: missing_count_for(recipe, terms))
-    }.sort_by { |result| [ result.missing_count, time_sort_key(result.recipe) ] }
+    pairs = ranked_page_pairs(matchable, terms)
+    @has_next = pairs.size > PAGE_SIZE
+    pairs = pairs.first(PAGE_SIZE)
+    recipes = recipes_for(pairs.map(&:first))
+    pairs.filter_map { |id, missing|
+      recipe = recipes[id]
+      next unless recipe
+
+      Result.new(recipe: recipe, missing_count: missing.to_i)
+    }
   end
 
   private
@@ -40,24 +64,33 @@ class RecipeMatcher
     }.reject(&:blank?).uniq
   end
 
-  def recipes_matching(matchable)
-    ingredient_ids = Ingredient.where(normalized_name: matchable).pluck(:id)
-    return Recipe.none if ingredient_ids.empty?
-
-    recipe_ids = RecipeIngredient.where(ingredient_id: ingredient_ids).distinct.pluck(:recipe_id)
-    Recipe.where(id: recipe_ids).includes(recipe_ingredients: :ingredient)
+  def matching_recipe_id_scope(matchable)
+    ingredient_ids = Ingredient.where(normalized_name: matchable).select(:id)
+    RecipeIngredient.where(ingredient_id: ingredient_ids).select(:recipe_id)
   end
 
-  def missing_count_for(recipe, terms)
-    recipe.recipe_ingredients.count do |recipe_ingredient|
-      name = recipe_ingredient.ingredient.normalized_name
-      next false if STAPLES.include?(name)
+  def ranked_page_pairs(matchable, terms)
+    excluded = (STAPLES + terms).uniq
+    missing_sql = Recipe.sanitize_sql_array([
+      "COUNT(ingredients.id) FILTER (WHERE ingredients.normalized_name NOT IN (?))",
+      excluded
+    ])
+    unknown_sql = "CASE WHEN COALESCE(recipes.prep_time, 0) = 0 AND COALESCE(recipes.cook_time, 0) = 0 THEN 1 ELSE 0 END"
+    time_sql = "(COALESCE(recipes.prep_time, 0) + COALESCE(recipes.cook_time, 0))"
+    offset = (@page - 1) * PAGE_SIZE
 
-      terms.exclude?(name)
-    end
+    Recipe.where(id: matching_recipe_id_scope(matchable))
+      .joins(recipe_ingredients: :ingredient)
+      .group("recipes.id")
+      .order(Arel.sql("#{missing_sql} ASC, #{unknown_sql} ASC, #{time_sql} ASC, recipes.id ASC"))
+      .offset(offset)
+      .limit(PAGE_SIZE + 1)
+      .pluck(Arel.sql("recipes.id"), Arel.sql(missing_sql))
   end
 
-  def time_sort_key(recipe)
-    recipe.total_time || Float::INFINITY
+  def recipes_for(ids)
+    return {} if ids.empty?
+
+    Recipe.where(id: ids).includes(recipe_ingredients: :ingredient).index_by(&:id)
   end
 end
