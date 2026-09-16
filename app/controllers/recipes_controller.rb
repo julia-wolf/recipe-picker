@@ -1,12 +1,12 @@
 class RecipesController < ApplicationController
   def index
-    @query = params[:q]
-    @staples_only = RecipeMatcher.staples_only?(@query)
-    @results = RecipeMatcher.search(@query, page: params[:page])
+    @ingredients = params[:ingredients]
+    @staples_only = RecipeMatcher.staples_only?(@ingredients)
+    @results = RecipeMatcher.search(@ingredients, page: params[:page])
   end
 
   def show
-    @query = params[:q]
+    @ingredients = params[:ingredients]
     @recipe = Recipe.includes(recipe_ingredients: :ingredient).find(params[:id])
   end
 end

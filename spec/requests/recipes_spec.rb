@@ -38,19 +38,19 @@ RSpec.describe "Recipes", type: :request do
     recipe = create_recipe(title: "Omelette", ingredients: [ "egg" ], image_url: "https://example.com/omelette.jpg")
     create_recipe(title: "Steak", ingredients: [ "beef" ])
 
-    browser_get recipes_path, q: "egg"
+    browser_get recipes_path, ingredients: "egg"
 
     expect(response.body).to include("Omelette")
     expect(response.body).to include("Cook now")
     expect(response.body).to include("20 min")
-    expect(response.body).to include(recipe_path(recipe, q: "egg"))
+    expect(response.body).to include(recipe_path(recipe, ingredients: "egg"))
     expect(response.body).not_to include("Steak")
   end
 
   it "lists near matches with how many ingredients are missing" do
     create_recipe(title: "Stir fry", ingredients: [ "chicken", "onion" ])
 
-    browser_get recipes_path, q: "chicken"
+    browser_get recipes_path, ingredients: "chicken"
 
     expect(response.body).to include("Stir fry")
     expect(response.body).to include("Missing 1")
@@ -59,7 +59,7 @@ RSpec.describe "Recipes", type: :request do
   it "explains that staples alone are not a pantry search" do
     create_recipe(title: "Omelette", ingredients: [ "egg", "salt" ])
 
-    browser_get recipes_path, q: "salt"
+    browser_get recipes_path, ingredients: "salt"
 
     expect(response.body).to include("Salt, pepper, water, and black pepper are assumed")
     expect(response.body).not_to include("No recipes match those ingredients")
@@ -69,7 +69,7 @@ RSpec.describe "Recipes", type: :request do
   it "shows an empty result when nothing matches" do
     create_recipe(title: "Omelette", ingredients: [ "egg" ])
 
-    browser_get recipes_path, q: "chicken"
+    browser_get recipes_path, ingredients: "chicken"
 
     expect(response.body).to include("No recipes match those ingredients")
   end
@@ -84,7 +84,7 @@ RSpec.describe "Recipes", type: :request do
       rating: 4.5
     )
 
-    browser_get recipe_path(recipe), q: "egg"
+    browser_get recipe_path(recipe), ingredients: "egg"
 
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Omelette")
@@ -93,7 +93,7 @@ RSpec.describe "Recipes", type: :request do
     expect(response.body).to include("cook 10 min")
     expect(response.body).to include("Rating 4.5")
     expect(response.body).to include("egg")
-    expect(response.body).to include(recipes_path(q: "egg"))
+    expect(response.body).to include(recipes_path(ingredients: "egg"))
   end
 
   it "returns not found for a missing recipe" do

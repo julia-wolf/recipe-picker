@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title><%= content_for(:title) || "Recipe Picker" %></title>
+    <title><%= content_for(:title) || "Cook from your pantry" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
@@ -23,6 +23,8 @@
   </head>
 
   <body>
-    <%= yield %>
+    <main>
+      <%= yield %>
+    </main>
   </body>
 </html>

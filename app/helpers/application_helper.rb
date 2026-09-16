@@ -1,4 +1,15 @@
 module ApplicationHelper
+  RECIPE_PHOTO_FALLBACK = "/recipe-placeholder.svg".freeze
+
+  def recipe_photo_tag(recipe)
+    url = recipe.image_url.presence || RECIPE_PHOTO_FALLBACK
+    image_tag(
+      url,
+      alt: recipe.title,
+      class: "recipe-photo",
+      onerror: "this.onerror=null;this.src='#{RECIPE_PHOTO_FALLBACK}'"
+    )
+  end
   def recipe_time(recipe, detail: false)
     total = recipe.total_time
     return "Time not listed" unless total

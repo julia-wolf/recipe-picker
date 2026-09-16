@@ -1,10 +1,8 @@
-<p><%= link_to "Back to recipes", recipes_path(q: @query) %></p>
+<p><%= link_to "Back to recipes", recipes_path(ingredients: @ingredients) %></p>
 
 <h1><%= @recipe.title %></h1>
 
-<% if @recipe.image_url.present? %>
-  <p><%= image_tag @recipe.image_url, alt: @recipe.title %></p>
-<% end %>
+<p><%= recipe_photo_tag(@recipe) %></p>
 
 <p><%= recipe_time(@recipe, detail: true) %></p>
 
