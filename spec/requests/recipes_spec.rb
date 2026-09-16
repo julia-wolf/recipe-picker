@@ -30,8 +30,9 @@ RSpec.describe "Recipes", type: :request do
     browser_get root_path
 
     expect(response).to have_http_status(:ok)
-    expect(response.body).to include("Ingredients you have")
-    expect(response.body).to include("Enter pantry ingredients")
+    expect(response.body).to include("What you have at home")
+    expect(response.body).to include("Tonight")
+    expect(response.body).to include("Salt, pepper, and water are assumed")
   end
 
   it "lists matching recipes with a cook-now signal" do
@@ -41,10 +42,27 @@ RSpec.describe "Recipes", type: :request do
     browser_get recipes_path, ingredients: "egg"
 
     expect(response.body).to include("Omelette")
-    expect(response.body).to include("Cook now")
+    expect(response.body).to include(">Cook now<")
     expect(response.body).to include("20 min")
     expect(response.body).to include(recipe_path(recipe, ingredients: "egg"))
     expect(response.body).not_to include("Steak")
+  end
+
+  it "groups exact matches under Cook now and near-misses under Almost" do
+    create_recipe(title: "Omelette", ingredients: [ "egg" ])
+    create_recipe(title: "Stir fry", ingredients: [ "chicken", "onion" ])
+    create_recipe(title: "Curry", ingredients: [ "chicken", "onion", "garlic", "ginger" ])
+
+    browser_get recipes_path, ingredients: "egg, chicken"
+
+    expect(response.body).to include("<h2>Cook now</h2>")
+    expect(response.body).to include("<h2>Almost there</h2>")
+    expect(response.body).to include("<h2>Needs more</h2>")
+    expect(response.body).to include("Omelette")
+    expect(response.body).to include("Stir fry")
+    expect(response.body).to include("Curry")
+    expect(response.body).to include("Missing 1")
+    expect(response.body).to include("Missing 3")
   end
 
   it "lists near matches with how many ingredients are missing" do
@@ -54,6 +72,9 @@ RSpec.describe "Recipes", type: :request do
 
     expect(response.body).to include("Stir fry")
     expect(response.body).to include("Missing 1")
+    expect(response.body).to include("Still need: onion")
+    expect(response.body).to include("<h2>Almost there</h2>")
+    expect(response.body).not_to include("<h2>Cook now</h2>")
   end
 
   it "explains that staples alone are not a pantry search" do
@@ -61,9 +82,27 @@ RSpec.describe "Recipes", type: :request do
 
     browser_get recipes_path, ingredients: "salt"
 
-    expect(response.body).to include("Salt, pepper, water, and black pepper are assumed")
-    expect(response.body).not_to include("No recipes match those ingredients")
+    expect(response.body).to include("Salt, pepper, and water are already assumed")
+    expect(response.body).not_to include("No recipes match that pantry")
     expect(response.body).not_to include("Omelette")
+  end
+
+  it "links to the next page of matches" do
+    21.times { |i|
+      create_recipe(title: "Chicken #{i}", ingredients: [ "chicken" ], prep_time: i + 1, cook_time: 0)
+    }
+
+    browser_get recipes_path, ingredients: "chicken"
+
+    expect(response.body).to include(">Next<")
+    expect(response.body).to include("page=2")
+    expect(response.body).not_to include(">Previous<")
+
+    browser_get recipes_path, ingredients: "chicken", page: 2
+
+    expect(response.body).to include(">Previous<")
+    expect(response.body).to include("Chicken 20")
+    expect(response.body).not_to include(">Next<")
   end
 
   it "shows an empty result when nothing matches" do
@@ -71,10 +110,10 @@ RSpec.describe "Recipes", type: :request do
 
     browser_get recipes_path, ingredients: "chicken"
 
-    expect(response.body).to include("No recipes match those ingredients")
+    expect(response.body).to include("No recipes match that pantry")
   end
 
-  it "shows a recipe with times, rating, and ingredients" do
+  it "shows a recipe with times and pantry coverage" do
     recipe = create_recipe(
       title: "Omelette",
       ingredients: [ "egg" ],
@@ -91,9 +130,37 @@ RSpec.describe "Recipes", type: :request do
     expect(response.body).to include("15 min total")
     expect(response.body).to include("prep 5 min")
     expect(response.body).to include("cook 10 min")
-    expect(response.body).to include("Rating 4.5")
+    expect(response.body).not_to include("Rated")
+    expect(response.body).not_to include("4.5")
     expect(response.body).to include("egg")
+    expect(response.body).to include("<h2>In your pantry</h2>")
+    expect(response.body).to include("You have everything")
     expect(response.body).to include(recipes_path(ingredients: "egg"))
+    expect(response.body).to include("Back to results")
+  end
+
+  it "splits a recipe into have and missing pantry lists" do
+    recipe = create_recipe(title: "Stir fry", ingredients: [ "chicken", "onion", "salt" ])
+
+    browser_get recipe_path(recipe), ingredients: "chicken"
+
+    expect(response.body).to include("<h2>In your pantry</h2>")
+    expect(response.body).to include("<h2>Still to get</h2>")
+    expect(response.body).to include("chicken")
+    expect(response.body).to include("salt")
+    expect(response.body).to include("onion")
+    expect(response.body).not_to include("<h2>Ingredients</h2>")
+  end
+
+  it "shows the full ingredient list when there is no pantry query" do
+    recipe = create_recipe(title: "Omelette", ingredients: [ "egg" ])
+
+    browser_get recipe_path(recipe)
+
+    expect(response.body).to include("<h2>Ingredients</h2>")
+    expect(response.body).to include("egg")
+    expect(response.body).not_to include("<h2>In your pantry</h2>")
+    expect(response.body).to include("Back to search")
   end
 
   it "returns not found for a missing recipe" do

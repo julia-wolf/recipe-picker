@@ -1,0 +1,9 @@
+<article>
+  <p><%= recipe_photo_tag(result.recipe) %></p>
+  <h3><%= link_to result.recipe.title, recipe_path(result.recipe, ingredients: @ingredients) %></h3>
+  <p class="match-signal"><%= result.match_signal %></p>
+  <% if result.missing.any? %>
+    <p>Still need: <%= result.missing.join(", ") %></p>
+  <% end %>
+  <p><%= recipe_time(result.recipe) %></p>
+</article>

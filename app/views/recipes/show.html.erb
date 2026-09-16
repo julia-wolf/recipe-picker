@@ -1,4 +1,9 @@
-<p><%= link_to "Back to recipes", recipes_path(ingredients: @ingredients) %></p>
+<p>
+  <%= link_to(
+        @ingredients.present? ? "Back to results" : "Back to search",
+        recipes_path(ingredients: @ingredients)
+      ) %>
+</p>
 
 <h1><%= @recipe.title %></h1>
 
@@ -6,10 +11,33 @@
 
 <p><%= recipe_time(@recipe, detail: true) %></p>
 
-
-<h2>Ingredients</h2>
-<ul>
-  <% @recipe.recipe_ingredients.each do |line| %>
-    <li><%= line.display_text %></li>
+<% if @explanation %>
+  <h2>In your pantry</h2>
+  <% if @explanation.have.any? %>
+    <ul>
+      <% @explanation.have.each do |line| %>
+        <li><%= line %></li>
+      <% end %>
+    </ul>
+  <% else %>
+    <p>None of these are in your pantry.</p>
   <% end %>
-</ul>
+
+  <h2>Still to get</h2>
+  <% if @explanation.missing.any? %>
+    <ul>
+      <% @explanation.missing.each do |line| %>
+        <li><%= line %></li>
+      <% end %>
+    </ul>
+  <% else %>
+    <p>You have everything — cook this now.</p>
+  <% end %>
+<% else %>
+  <h2>Ingredients</h2>
+  <ul>
+    <% @recipe.recipe_ingredients.each do |line| %>
+      <li><%= line.display_text %></li>
+    <% end %>
+  </ul>
+<% end %>
