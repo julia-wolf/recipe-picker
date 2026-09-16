@@ -1,0 +1,17 @@
+<p><%= link_to "Back to recipes", recipes_path(q: @query) %></p>
+
+<h1><%= @recipe.title %></h1>
+
+<% if @recipe.image_url.present? %>
+  <p><%= image_tag @recipe.image_url, alt: @recipe.title %></p>
+<% end %>
+
+<p><%= recipe_time(@recipe, detail: true) %></p>
+
+
+<h2>Ingredients</h2>
+<ul>
+  <% @recipe.recipe_ingredients.each do |line| %>
+    <li><%= line.display_text %></li>
+  <% end %>
+</ul>

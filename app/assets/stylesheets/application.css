@@ -8,3 +8,20 @@
  *
  * Consider organizing styles into separate files for maintainability.
  */
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+.pagination {
+  display: flex;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.pagination a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
