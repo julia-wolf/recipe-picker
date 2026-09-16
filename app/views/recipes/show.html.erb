@@ -1,0 +1,38 @@
+<p>
+  <%= link_to t(".back"), recipes_path(ingredients: @ingredients) %>
+</p>
+
+<h1><%= @recipe.title %></h1>
+
+<p><%= recipe_photo_tag(@recipe) %></p>
+
+<% recipe_time_lines(@recipe).each do |line| %>
+  <p><%= line %></p>
+<% end %>
+
+<% if @coverage %>
+  <% if @coverage.have.any? %>
+    <h2><%= t(".in_your_pantry") %></h2>
+    <ul>
+      <% @coverage.have.each do |line| %>
+        <li><%= line %></li>
+      <% end %>
+    </ul>
+  <% end %>
+
+  <% if @coverage.missing.any? %>
+    <h2><%= t(".extra_ingredients") %></h2>
+    <ul>
+      <% @coverage.missing.each do |line| %>
+        <li><%= line %></li>
+      <% end %>
+    </ul>
+  <% end %>
+<% else %>
+  <h2><%= t(".extra_ingredients") %></h2>
+  <ul>
+    <% @recipe.recipe_ingredients.each do |line| %>
+      <li><%= line.display_text %></li>
+    <% end %>
+  </ul>
+<% end %>

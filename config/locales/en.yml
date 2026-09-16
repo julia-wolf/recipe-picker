@@ -1,31 +1,36 @@
-# Files in the config/locales directory are used for internationalization and
-# are automatically loaded by Rails. If you want to use locales other than
-# English, add the necessary files in this directory.
-#
-# To use the locales, use `I18n.t`:
-#
-#     I18n.t "hello"
-#
-# In views, this is aliased to just `t`:
-#
-#     <%= t("hello") %>
-#
-# To use a different locale, set it with `I18n.locale`:
-#
-#     I18n.locale = :es
-#
-# This would use the information in config/locales/es.yml.
-#
-# To learn more about the API, please read the Rails Internationalization guide
-# at https://guides.rubyonrails.org/i18n.html.
-#
-# Be aware that YAML interprets the following case-insensitive strings as
-# booleans: `true`, `false`, `on`, `off`, `yes`, `no`. Therefore, these strings
-# must be quoted to be interpreted as strings. For example:
-#
-#     en:
-#       "yes": yup
-#       enabled: "ON"
-
 en:
-  hello: "Hello world"
+  recipes:
+    title: "What’s for dinner?"
+    time:
+      unknown: "Ready in: time unknown"
+      ready_in:
+        one: "Ready in: %{count} minute"
+        other: "Ready in: %{count} minutes"
+      preparation:
+        one: "Preparation: %{count} minute"
+        other: "Preparation: %{count} minutes"
+      cook:
+        one: "Cook time: %{count} minute"
+        other: "Cook time: %{count} minutes"
+    index:
+      lead: "Tonight’s dinner, from what you already have."
+      ingredients_label: "Type the ingredients you have:"
+      ingredients_placeholder: "eggs, onion, tomato"
+      submit: "Find recipes"
+      cook_now: "You have everything to cook:"
+      almost: "You still need 1 to 3 extra ingredients to cook:"
+      empty:
+        unknown:
+          one: "That ingredient does not appear in any recipe. Add another ingredient you already have."
+          other: "These ingredients do not appear in any recipe. Add another ingredient you already have."
+        too_far:
+          one: "That ingredient is in recipes, but each still needs more than three extra ingredients. Add another ingredient you already have."
+          other: "These ingredients are in recipes, but each still needs more than three extra ingredients. Add another ingredient you already have."
+    result:
+      extra_ingredients: "Extra ingredients: %{list}"
+      pantry_staples: "Pantry staples: %{list}"
+      see_recipe: "See recipe"
+    show:
+      back: "Back"
+      in_your_pantry: "In your pantry:"
+      extra_ingredients: "Extra ingredients:"
