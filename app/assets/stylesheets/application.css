@@ -64,8 +64,6 @@ article h3 a::after {
   inset: 0;
 }
 
-article img,
-main img,
 .recipe-photo {
   display: block;
   width: 100%;
@@ -75,6 +73,11 @@ main img,
   object-fit: cover;
   background: #e6e0d6;
   margin-bottom: 0.75rem;
+}
+
+article .recipe-photo {
+  height: 9rem;
+  aspect-ratio: auto;
 }
 
 .match-signal {
