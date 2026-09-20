@@ -46,6 +46,11 @@ RSpec.describe "Recipes", type: :request do
     expect(response.body).to include("20 min")
     expect(response.body).to include(recipe_path(recipe, ingredients: "egg"))
     expect(response.body).to include("See recipe")
+    expect(response.body).to include('class="recipe-card"')
+    expect(response.body).to include("You have everything.")
+    expect(response.body).not_to include("Still need:")
+    expect(response.body.scan("<h3>Omelette</h3>").size).to eq(1)
+    expect(response.body.scan('class="recipe-card"').size).to eq(1)
     expect(response.body).not_to include("Steak")
   end
 
@@ -76,6 +81,7 @@ RSpec.describe "Recipes", type: :request do
     expect(response.body).to include("Missing 1")
     expect(response.body).to include("Still need: onion")
     expect(response.body).to include("<h2>Almost there</h2>")
+    expect(response.body).to include("Missing 1 to 3 ingredients.")
     expect(response.body).not_to include("<h2>Cook now</h2>")
   end
 
@@ -167,7 +173,9 @@ RSpec.describe "Recipes", type: :request do
     expect(response.body).not_to include("4.5")
     expect(response.body).to include("egg")
     expect(response.body).to include("<h2>In your pantry</h2>")
-    expect(response.body).to include("You have everything")
+    expect(response.body).to include("egg")
+    expect(response.body).not_to include("<h2>Still to get</h2>")
+    expect(response.body).not_to include("You have everything")
     expect(response.body).to include(recipes_path(ingredients: "egg"))
     expect(response.body).to include("Back to results")
   end
@@ -183,6 +191,17 @@ RSpec.describe "Recipes", type: :request do
     expect(response.body).to include("salt")
     expect(response.body).to include("onion")
     expect(response.body).not_to include("<h2>Ingredients</h2>")
+    expect(response.body).not_to include("You have everything — cook this now.")
+  end
+
+  it "shows Time not listed and the No photo fallback when those are missing" do
+    create_recipe(title: "Omelette", ingredients: [ "egg" ], prep_time: 0, cook_time: 0)
+
+    browser_get recipes_path, ingredients: "egg"
+
+    expect(response.body).to include("Time not listed")
+    expect(response.body).to include("recipe-placeholder.svg")
+    expect(response.body).to include("this.onerror=null")
   end
 
   it "shows the full ingredient list when there is no pantry query" do

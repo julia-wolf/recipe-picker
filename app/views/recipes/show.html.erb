@@ -23,15 +23,13 @@
     <p>None of these are in your pantry.</p>
   <% end %>
 
-  <h2>Still to get</h2>
   <% if @explanation.missing.any? %>
+    <h2>Still to get</h2>
     <ul>
       <% @explanation.missing.each do |line| %>
         <li><%= line %></li>
       <% end %>
     </ul>
-  <% else %>
-    <p>You have everything — cook this now.</p>
   <% end %>
 <% else %>
   <h2>Ingredients</h2>

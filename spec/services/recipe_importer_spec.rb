@@ -15,6 +15,8 @@ RSpec.describe RecipeImporter do
     expect(cornbread.prep_time).to eq(10)
     expect(cornbread.image_url).to eq("https://example.com/cornbread.jpg")
     expect(cornbread.recipe_ingredients.map(&:display_text)).to include("125 g all-purpose flour")
+    expect(cornbread.recipe_ingredients.map(&:display_text)).to include("240 ml cornmeal")
+    expect(cornbread.recipe_ingredients.map(&:display_text)).to include("2 g salt")
   end
 
   it "raises when the dataset is missing" do

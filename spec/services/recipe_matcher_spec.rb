@@ -95,7 +95,26 @@ RSpec.describe RecipeMatcher do
 
       expect(result.missing_count).to eq(0)
       expect(result.have).to include("salt and ground black pepper to taste")
+      expect(result.staples).to include("salt and ground black pepper to taste")
       expect(result.missing).to eq([])
+    end
+
+    it "does not treat garlic salt as a staple" do
+      recipe = create_recipe(title: "Seasoned eggs", ingredients: [ "egg", "garlic salt" ])
+
+      result = described_class.search("egg").find { |row| row.recipe == recipe }
+
+      expect(result.missing_count).to eq(1)
+      expect(result.missing).to include("garlic salt")
+    end
+
+    it "treats water as a staple" do
+      recipe = create_recipe(title: "Boiled egg", ingredients: [ "egg", "water" ])
+
+      result = described_class.search("egg").find { |row| row.recipe == recipe }
+
+      expect(result.missing_count).to eq(0)
+      expect(result.staples).to include("water")
     end
 
     it "does not treat bell pepper or cayenne as staples" do
@@ -188,6 +207,20 @@ RSpec.describe RecipeMatcher do
 
       expect(matcher.search).to eq([])
       expect(matcher).to be_too_far
+    end
+
+    it "does not flag too_far when the exact pantry name is absent" do
+      create_recipe(title: "Omelette", ingredients: [ "egg" ])
+      matcher = described_class.new("chicken")
+
+      expect(matcher.search).to eq([])
+      expect(matcher).not_to be_too_far
+    end
+
+    it "splits pantry terms on commas or newlines" do
+      recipe = create_recipe(title: "Stir fry", ingredients: [ "chicken", "onion" ])
+
+      expect(described_class.search("chicken\nonion").map(&:recipe)).to eq([ recipe ])
     end
 
     it "does not pad a small Cook now set" do

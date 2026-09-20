@@ -28,6 +28,13 @@ RSpec.describe UnitConverter do
     expect(display("1 cup minced garlic")).to eq("136 g minced garlic")
     expect(display("1 teaspoon garlic powder")).to eq("3 g garlic powder")
     expect(display("1 cup rolled oats")).to eq("81 g rolled oats")
+    expect(display("1 teaspoon salt")).to eq("6 g salt")
+    expect(display("1 teaspoon baking powder")).to eq("5 g baking powder")
+    expect(display("1 cup confectioners' sugar")).to eq("120 g confectioners' sugar")
+    expect(display("1 teaspoon ground cinnamon")).to eq("3 g ground cinnamon")
+    expect(display("1 teaspoon ground cumin")).to eq("2 g ground cumin")
+    expect(display("1 teaspoon active dry yeast")).to eq("4 g active dry yeast")
+    expect(display("1 teaspoon black pepper")).to eq("2 g black pepper")
   end
 
   it "converts spoons to millilitres when the name is not in the USDA table" do
@@ -44,9 +51,18 @@ RSpec.describe UnitConverter do
     expect(display("1 (14 ounce) can diced tomatoes")).to eq("392 g diced tomatoes")
   end
 
+  it "keeps cocoa and mayonnaise in millilitres" do
+    expect(display("1 cup unsweetened cocoa powder")).to eq("240 ml unsweetened cocoa powder")
+    expect(display("1 cup mayonnaise")).to eq("240 ml mayonnaise")
+  end
+
   it "keeps counts as counts" do
     expect(display("1 onion, chopped")).to eq("1 onion, chopped")
     expect(display("2 eggs")).to eq("2 eggs")
+  end
+
+  it "keeps a line with an unknown unit as written" do
+    expect(display("1 bunch cilantro")).to eq("1 bunch cilantro")
   end
 
   it "falls back to the original line when nothing is convertible" do
