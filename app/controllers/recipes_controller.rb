@@ -2,10 +2,9 @@ class RecipesController < ApplicationController
   def index
     @ingredients = params[:ingredients]
     @staples_only = RecipeMatcher.staples_only?(@ingredients)
-    @results = RecipeMatcher.search(@ingredients, page: params[:page])
+    @results = RecipeMatcher.search(@ingredients)
     @cook_now = @results.select(&:cook_now?)
     @almost = @results.select(&:almost?)
-    @more = @results.reject { |result| result.cook_now? || result.almost? }
   end
 
   def show

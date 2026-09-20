@@ -85,6 +85,31 @@ RSpec.describe RecipeMatcher do
       expect(described_class.search("chicken").find { |row| row.recipe == peppered }.missing_count).to eq(0)
     end
 
+    it "covers compound salt-and-pepper lines as staples" do
+      recipe = create_recipe(
+        title: "Seasoned eggs",
+        ingredients: [ "egg", "salt and ground black pepper to taste" ]
+      )
+
+      result = described_class.search("egg").find { |row| row.recipe == recipe }
+
+      expect(result.missing_count).to eq(0)
+      expect(result.have).to include("salt and ground black pepper to taste")
+      expect(result.missing).to eq([])
+    end
+
+    it "does not treat bell pepper or cayenne as staples" do
+      recipe = create_recipe(
+        title: "Peppers",
+        ingredients: [ "egg", "green bell pepper chopped", "cayenne pepper" ]
+      )
+
+      result = described_class.search("egg").find { |row| row.recipe == recipe }
+
+      expect(result.missing_count).to eq(2)
+      expect(result.missing).to include("green bell pepper chopped", "cayenne pepper")
+    end
+
     it "does not query once per recipe when scoring matches" do
       3.times { |i| create_recipe(title: "Chicken #{i}", ingredients: [ "chicken", "onion" ]) }
 
@@ -114,29 +139,39 @@ RSpec.describe RecipeMatcher do
       expect(described_class.search("chicken").map(&:recipe)).to eq([ timed, unknown ])
     end
 
-    it "returns at most 20 recipes per page" do
-      21.times { |i|
+    it "caps Cook now at 8 and does not pad with weaker matches" do
+      10.times { |i|
         create_recipe(title: "Chicken #{i}", ingredients: [ "chicken" ], prep_time: i + 1, cook_time: 0)
       }
+      create_recipe(title: "Almost", ingredients: [ "chicken", "onion" ], prep_time: 1, cook_time: 0)
 
-      expect(described_class.search("chicken").size).to eq(20)
+      results = described_class.search("chicken")
+
+      expect(results.size).to eq(8)
+      expect(results).to all(be_cook_now)
+      expect(results.map { |row| row.recipe.title }).not_to include("Almost")
     end
 
-    it "returns later ranked recipes on the next page" do
-      recipes = 21.times.map { |i|
-        create_recipe(title: "Chicken #{i}", ingredients: [ "chicken" ], prep_time: i + 1, cook_time: 0)
+    it "fills leftover slots with at most 3 Almost recipes" do
+      2.times { |i|
+        create_recipe(title: "Exact #{i}", ingredients: [ "chicken" ], prep_time: i + 1, cook_time: 0)
       }
+      5.times { |i|
+        create_recipe(title: "Almost #{i}", ingredients: [ "chicken", "onion" ], prep_time: i + 1, cook_time: 0)
+      }
+      create_recipe(title: "Far", ingredients: [ "chicken", "onion", "garlic", "ginger" ])
 
-      expect(described_class.search("chicken", page: 2).map(&:recipe)).to eq([ recipes.last ])
+      results = described_class.search("chicken")
+
+      expect(results.count(&:cook_now?)).to eq(2)
+      expect(results.count(&:almost?)).to eq(3)
+      expect(results.map { |row| row.recipe.title }).not_to include("Far")
     end
 
-    it "signals when another page of matches exists" do
-      21.times { |i|
-        create_recipe(title: "Chicken #{i}", ingredients: [ "chicken" ], prep_time: i + 1, cook_time: 0)
-      }
+    it "does not pad a small Cook now set" do
+      create_recipe(title: "Exact", ingredients: [ "chicken" ])
 
-      expect(described_class.search("chicken")).to be_has_next
-      expect(described_class.search("chicken", page: 2)).not_to be_has_next
+      expect(described_class.search("chicken").map { |row| row.recipe.title }).to eq([ "Exact" ])
     end
 
     it "treats a staples-only pantry as not a match query" do
@@ -146,12 +181,18 @@ RSpec.describe RecipeMatcher do
       expect(described_class).not_to be_staples_only("")
     end
 
-    it "treats invalid pages as the first page" do
-      first = create_recipe(title: "First", ingredients: [ "chicken" ], prep_time: 5, cook_time: 0)
-      create_recipe(title: "Second", ingredients: [ "chicken" ], prep_time: 50, cook_time: 0)
+    it "keeps a hard cap of 8 when mixing Cook now and Almost" do
+      6.times { |i|
+        create_recipe(title: "Exact #{i}", ingredients: [ "chicken" ], prep_time: i + 1, cook_time: 0)
+      }
+      5.times { |i|
+        create_recipe(title: "Almost #{i}", ingredients: [ "chicken", "onion" ], prep_time: i + 1, cook_time: 0)
+      }
 
-      expect(described_class.search("chicken", page: 0).map(&:recipe).first).to eq(first)
-      expect(described_class.search("chicken", page: -1).map(&:recipe).first).to eq(first)
+      results = described_class.search("chicken")
+
+      expect(results.count(&:cook_now?)).to eq(6)
+      expect(results.count(&:almost?)).to eq(2)
     end
 
     it "signals Cook now when nothing is missing" do

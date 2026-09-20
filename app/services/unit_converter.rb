@@ -19,29 +19,28 @@ class UnitConverter
   }.freeze
 
   # USDA FoodData Central SR Legacy household weights, grams per 240 ml cup.
-  # Limited to the 15 most frequent distinct names in our catalog (skipping the
-  # compound "salt and ground black pepper to taste" row). tsp/tbsp scaled ×48
-  # or ×16 when USDA lists no cup. First matching pattern wins.
-  # fdcIds: vanilla 173471, baking powder 172804, baking soda 175040,
-  # olive oil 171413, vegetable oil 172370, flour 169761, sugar 169655,
-  # pepper 170931, cinnamon 171320, garlic 169230, butter 173430, milk 171265,
-  # water 174158, egg 171287, salt 173468.
+  # Top 15 dry/solid catalog names — oils and other liquids stay ml. tsp/tbsp
+  # scaled ×48 or ×16 when USDA lists no cup. First matching pattern wins.
+  # fdcIds: baking powder 172804, baking soda 175040, garlic powder 171325,
+  # brown sugar 168833, powdered sugar 169656, flour 169761, sugar 169655,
+  # pepper 170931, cinnamon 171320, garlic 169230, butter 173430, salt 173468,
+  # cumin 170923, yeast 175043, oats 173904.
   GRAMS_PER_CUP = [
-    [ /vanilla extract/, 208 ],
     [ /baking powder/, 220.8 ],
     [ /baking soda/, 220.8 ],
-    [ /olive oil/, 216 ],
-    [ /vegetable oil/, 218 ],
+    [ /garlic powder/, 148.8 ],
+    [ /brown sugar/, 220 ],
+    [ /confectioner sugar|powdered sugar|icing sugar/, 120 ],
     [ /all purpose flour|\bflour\b/, 125 ],
     [ /white sugar|granulated sugar|(?<!brown )(?<!powdered )(?<!confectioner )(?<!icing )\bsugar\b/, 200 ],
     [ /black pepper/, 110.4 ],
     [ /ground cinnamon|\bcinnamon\b/, 124.8 ],
     [ /\bgarlic\b(?! powder)(?! salt)/, 136 ],
     [ /(?<!peanut )\bbutter\b/, 227 ],
-    [ /(?<!coconut )\bmilk\b/, 244 ],
-    [ /\bwater\b/, 237 ],
-    [ /\begg\b/, 243 ],
-    [ /\bsalt\b/, 292 ]
+    [ /\bsalt\b/, 292 ],
+    [ /ground cumin|\bcumin\b/, 100.8 ],
+    [ /active dry yeast|\byeast\b/, 192 ],
+    [ /\boats?\b/, 81 ]
   ].freeze
 
   def self.display_text(parsed)
@@ -94,6 +93,10 @@ class UnitConverter
 
   def format_amount(value)
     rounded = value.round(1)
-    (rounded % 1).zero? ? rounded.to_i.to_s : rounded.to_s
+    if (rounded % 1).zero?
+      rounded.to_i.to_s
+    else
+      rounded.to_s.tr(".", ",")
+    end
   end
 end

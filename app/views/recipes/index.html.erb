@@ -31,21 +31,4 @@
       <%= render partial: "result", collection: @almost, as: :result %>
     </section>
   <% end %>
-
-  <% if @more.any? %>
-    <section>
-      <h2>Needs more</h2>
-      <p>Missing 3 or more.</p>
-      <%= render partial: "result", collection: @more, as: :result %>
-    </section>
-  <% end %>
-
-  <nav class="pagination">
-    <% if @results.page > 1 %>
-      <%= link_to "Previous", recipes_path(ingredients: @ingredients, page: @results.page - 1) %>
-    <% end %>
-    <% if @results.has_next? %>
-      <%= link_to "Next", recipes_path(ingredients: @ingredients, page: @results.page + 1) %>
-    <% end %>
-  </nav>
 <% end %>

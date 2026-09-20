@@ -93,17 +93,10 @@ article h3 {
 }
 
 a {
-  color: #0b57d0;
+  color: inherit;
+  text-underline-offset: 0.15em;
 }
 
-.pagination {
-  display: flex;
-  gap: 1.5rem;
-  margin-top: 1.5rem;
-}
-
-.pagination a {
-  min-height: 44px;
-  display: inline-flex;
-  align-items: center;
+article h3 a {
+  text-decoration: none;
 }

@@ -7,26 +7,31 @@ RSpec.describe UnitConverter do
 
   it "converts cups to millilitres when the name is not in the USDA table" do
     expect(display("1 cup chopped onion")).to eq("240 ml chopped onion")
-    expect(display("1 cup packed brown sugar")).to eq("240 ml packed brown sugar")
     expect(display("1 cup peanut butter")).to eq("240 ml peanut butter")
   end
 
-  it "converts the most common catalog ingredients from USDA cup weights" do
+  it "keeps oils and other liquids in millilitres" do
+    expect(display("2 tablespoons olive oil")).to eq("30 ml olive oil")
+    expect(display("1 cup vegetable oil")).to eq("240 ml vegetable oil")
+    expect(display("1 ½ cups water")).to eq("360 ml water")
+    expect(display(".666 cup milk")).to eq("159,8 ml milk")
+    expect(display("11 \u204416 cups water")).to eq("165 ml water")
+    expect(display("1 teaspoon vanilla extract")).to eq("5 ml vanilla extract")
+  end
+
+  it "converts the most common dry catalog ingredients from USDA cup weights" do
     expect(display("1 cup all-purpose flour")).to eq("125 g all-purpose flour")
     expect(display("1 cup white sugar")).to eq("200 g white sugar")
+    expect(display("1 cup packed brown sugar")).to eq("220 g packed brown sugar")
     expect(display("1 cup butter")).to eq("227 g butter")
-    expect(display("1 ½ cups water")).to eq("355.5 g water")
-    expect(display(".666 cup milk")).to eq("162.5 g milk")
-    expect(display("11 \u204416 cups water")).to eq("162.9 g water")
-    expect(display("1 tablespoon all-purpose flour")).to eq("7.8 g all-purpose flour")
-    expect(display("2 tablespoons olive oil")).to eq("27 g olive oil")
-    expect(display("1 teaspoon vanilla extract")).to eq("4.3 g vanilla extract")
+    expect(display("1 tablespoon all-purpose flour")).to eq("7,8 g all-purpose flour")
     expect(display("1 cup minced garlic")).to eq("136 g minced garlic")
+    expect(display("1 teaspoon garlic powder")).to eq("3,1 g garlic powder")
+    expect(display("1 cup rolled oats")).to eq("81 g rolled oats")
   end
 
   it "converts spoons to millilitres when the name is not in the USDA table" do
     expect(display("2 tablespoons soy sauce")).to eq("30 ml soy sauce")
-    expect(display("1 teaspoon garlic powder")).to eq("5 ml garlic powder")
   end
 
   it "converts ounces and pounds to grams" do

@@ -57,12 +57,11 @@ RSpec.describe "Recipes", type: :request do
 
     expect(response.body).to include("<h2>Cook now</h2>")
     expect(response.body).to include("<h2>Almost there</h2>")
-    expect(response.body).to include("<h2>Needs more</h2>")
+    expect(response.body).not_to include("<h2>Needs more</h2>")
     expect(response.body).to include("Omelette")
     expect(response.body).to include("Stir fry")
-    expect(response.body).to include("Curry")
+    expect(response.body).not_to include("Curry")
     expect(response.body).to include("Missing 1")
-    expect(response.body).to include("Missing 3")
   end
 
   it "lists near matches with how many ingredients are missing" do
@@ -87,22 +86,19 @@ RSpec.describe "Recipes", type: :request do
     expect(response.body).not_to include("Omelette")
   end
 
-  it "links to the next page of matches" do
-    21.times { |i|
+  it "shows at most 8 Cook now recipes and skips weaker matches" do
+    10.times { |i|
       create_recipe(title: "Chicken #{i}", ingredients: [ "chicken" ], prep_time: i + 1, cook_time: 0)
     }
+    create_recipe(title: "Almost stew", ingredients: [ "chicken", "onion" ], prep_time: 1, cook_time: 0)
 
     browser_get recipes_path, ingredients: "chicken"
 
-    expect(response.body).to include(">Next<")
-    expect(response.body).to include("page=2")
-    expect(response.body).not_to include(">Previous<")
-
-    browser_get recipes_path, ingredients: "chicken", page: 2
-
-    expect(response.body).to include(">Previous<")
-    expect(response.body).to include("Chicken 20")
-    expect(response.body).not_to include(">Next<")
+    expect(response.body).to include("<h2>Cook now</h2>")
+    expect(response.body).not_to include("<h2>Almost there</h2>")
+    expect(response.body).not_to include("Almost stew")
+    expect(response.body).not_to include("Chicken 8")
+    expect(response.body).not_to include("Page ")
   end
 
   it "shows an empty result when nothing matches" do
