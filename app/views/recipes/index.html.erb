@@ -13,8 +13,14 @@
   <p>List ingredients, comma or line separated. Salt, pepper, and water are assumed.</p>
 <% elsif @staples_only %>
   <p>Salt, pepper, and water are already assumed. Add a food — chicken, eggs, rice.</p>
+<% elsif @results.empty? && @too_far %>
+  <% if pantry_entry_count(@ingredients) > 1 %>
+    <p>Recipes with these ingredients need more than 3 extra ingredients.</p>
+  <% else %>
+    <p>Recipes with that ingredient need more than 3 extra ingredients.</p>
+  <% end %>
 <% elsif @results.empty? %>
-  <p>No recipes match that pantry. Try a main ingredient like chicken or onion.</p>
+  <p>No recipes use that exact name. Try a catalog name like chicken or onion.</p>
 <% else %>
   <% if @cook_now.any? %>
     <section>
@@ -27,7 +33,7 @@
   <% if @almost.any? %>
     <section>
       <h2>Almost there</h2>
-      <p>Missing 1 or 2 ingredients.</p>
+      <p>Missing 1 to 3 ingredients.</p>
       <%= render partial: "result", collection: @almost, as: :result %>
     </section>
   <% end %>

@@ -55,11 +55,11 @@ class UnitConverter
     return @parsed.raw.to_s.strip if @parsed.quantity.nil?
 
     if (grams = to_g_from_density)
-      "#{format_amount(grams)} g #{@parsed.name}".strip
+      "#{format_grams(grams)} g #{@parsed.name}".strip
     elsif (ml = to_ml)
       "#{format_amount(ml)} ml #{@parsed.name}".strip
     elsif (grams = to_g)
-      "#{format_amount(grams)} g #{@parsed.name}".strip
+      "#{format_grams(grams)} g #{@parsed.name}".strip
     elsif @parsed.unit.nil?
       "#{format_amount(@parsed.quantity)} #{@parsed.name}".strip
     else
@@ -89,6 +89,10 @@ class UnitConverter
   def to_g
     factor = G_PER_UNIT[@parsed.unit]
     @parsed.quantity.to_f * factor if factor
+  end
+
+  def format_grams(value)
+    value.round.to_i.to_s
   end
 
   def format_amount(value)

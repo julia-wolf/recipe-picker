@@ -24,9 +24,9 @@ RSpec.describe UnitConverter do
     expect(display("1 cup white sugar")).to eq("200 g white sugar")
     expect(display("1 cup packed brown sugar")).to eq("220 g packed brown sugar")
     expect(display("1 cup butter")).to eq("227 g butter")
-    expect(display("1 tablespoon all-purpose flour")).to eq("7,8 g all-purpose flour")
+    expect(display("1 tablespoon all-purpose flour")).to eq("8 g all-purpose flour")
     expect(display("1 cup minced garlic")).to eq("136 g minced garlic")
-    expect(display("1 teaspoon garlic powder")).to eq("3,1 g garlic powder")
+    expect(display("1 teaspoon garlic powder")).to eq("3 g garlic powder")
     expect(display("1 cup rolled oats")).to eq("81 g rolled oats")
   end
 
@@ -37,6 +37,7 @@ RSpec.describe UnitConverter do
   it "converts ounces and pounds to grams" do
     expect(display("8 ounces cream cheese")).to eq("224 g cream cheese")
     expect(display("1 lb. potatoes")).to eq("454 g potatoes")
+    expect(display("6.1 g salt")).to eq("6 g salt")
   end
 
   it "converts a canned weight from the parenthetical size" do

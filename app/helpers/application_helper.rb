@@ -1,5 +1,5 @@
 module ApplicationHelper
-  RECIPE_PHOTO_FALLBACK = "/recipe-placeholder.svg".freeze
+  RECIPE_PHOTO_FALLBACK = "/recipe-placeholder.svg?v=2".freeze
 
   def recipe_photo_tag(recipe)
     url = recipe.image_url.presence || RECIPE_PHOTO_FALLBACK
@@ -19,5 +19,11 @@ module ApplicationHelper
     parts << "prep #{recipe.prep_time.to_i} min" if recipe.prep_time.to_i.positive?
     parts << "cook #{recipe.cook_time.to_i} min" if recipe.cook_time.to_i.positive?
     parts.join(" · ")
+  end
+
+  def pantry_entry_count(raw)
+    raw.to_s.split(/[,\n]/).map { |term|
+      IngredientNormalizer.pantry(term)
+    }.reject(&:blank?).uniq.size
   end
 end

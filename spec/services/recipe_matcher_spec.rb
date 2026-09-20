@@ -159,13 +159,35 @@ RSpec.describe RecipeMatcher do
       5.times { |i|
         create_recipe(title: "Almost #{i}", ingredients: [ "chicken", "onion" ], prep_time: i + 1, cook_time: 0)
       }
-      create_recipe(title: "Far", ingredients: [ "chicken", "onion", "garlic", "ginger" ])
+      create_recipe(title: "Far", ingredients: [ "chicken", "onion", "garlic", "ginger", "cream" ])
 
       results = described_class.search("chicken")
 
       expect(results.count(&:cook_now?)).to eq(2)
       expect(results.count(&:almost?)).to eq(3)
       expect(results.map { |row| row.recipe.title }).not_to include("Far")
+    end
+
+    it "includes recipes missing 3 and skips those missing 4 or more" do
+      close = create_recipe(title: "Close", ingredients: [ "chicken", "onion", "garlic", "ginger" ])
+      create_recipe(title: "Far", ingredients: [ "chicken", "onion", "garlic", "ginger", "cream" ])
+
+      results = described_class.search("chicken")
+
+      expect(results.map(&:recipe)).to eq([ close ])
+      expect(results.first.missing_count).to eq(3)
+      expect(results.first).to be_almost
+    end
+
+    it "flags leftover catalog hits when nothing is within 3 missing" do
+      create_recipe(
+        title: "Stew",
+        ingredients: [ "tomato", "beef", "onion", "carrot", "celery" ]
+      )
+      matcher = described_class.new("tomato")
+
+      expect(matcher.search).to eq([])
+      expect(matcher).to be_too_far
     end
 
     it "does not pad a small Cook now set" do
@@ -213,6 +235,7 @@ RSpec.describe RecipeMatcher do
       result = described_class.search("chicken").first
 
       expect(result.have).to eq([ "chicken", "salt" ])
+      expect(result.staples).to eq([ "salt" ])
       expect(result.missing).to eq([ "onion" ])
       expect(result).to be_almost
       expect(result).not_to be_cook_now
@@ -235,6 +258,7 @@ RSpec.describe RecipeMatcher do
       expect(result.recipe).to eq(recipe)
       expect(result.missing_count).to eq(1)
       expect(result.have).to eq([ "chicken", "salt" ])
+      expect(result.staples).to eq([ "salt" ])
       expect(result.missing).to eq([ "onion" ])
     end
   end
