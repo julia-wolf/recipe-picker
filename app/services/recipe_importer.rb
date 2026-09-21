@@ -143,7 +143,7 @@ class RecipeImporter
     {
       recipe: {
         title: title,
-        image_url: row["image"],
+        image_url: unwrap_image_url(row["image"]),
         prep_time: row["prep_time"],
         cook_time: row["cook_time"],
         rating: row["ratings"],
@@ -154,6 +154,17 @@ class RecipeImporter
       },
       lines: lines
     }
+  end
+
+  def unwrap_image_url(raw)
+    url = raw.to_s.strip
+    return if url.blank?
+
+    uri = URI.parse(url)
+    inner = URI.decode_www_form(uri.query.to_s).assoc("url")&.last
+    inner.presence || url
+  rescue URI::InvalidURIError
+    url
   end
 
   def build_line(raw)

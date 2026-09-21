@@ -39,6 +39,38 @@ RSpec.describe RecipeImporter do
     }.to raise_error(ArgumentError, /official dataset/)
   end
 
+  it "unwraps Meredith image proxy urls and leaves plain urls alone" do
+    file = Tempfile.new([ "recipes", ".json" ])
+    file.write(
+      [
+        {
+          "title" => "Omelette",
+          "cook_time" => 5,
+          "prep_time" => 5,
+          "ingredients" => [ "1 egg" ],
+          "image" => "https://imagesvc.meredithcorp.io/v3/mm/image?url=https%3A%2F%2Fimages.media-allrecipes.com%2Fuserphotos%2F970158.jpg"
+        },
+        {
+          "title" => "Salad",
+          "cook_time" => 0,
+          "prep_time" => 5,
+          "ingredients" => [ "1 tomato" ],
+          "image" => "https://example.com/salad.jpg"
+        }
+      ].to_json
+    )
+    file.close
+
+    described_class.import(file.path)
+
+    expect(Recipe.find_by!(title: "Omelette").image_url).to eq(
+      "https://images.media-allrecipes.com/userphotos/970158.jpg"
+    )
+    expect(Recipe.find_by!(title: "Salad").image_url).to eq("https://example.com/salad.jpg")
+  ensure
+    file.close!
+  end
+
   it "imports a gzipped local file" do
     file = Tempfile.new([ "recipes", ".json.gz" ])
     Zlib::GzipWriter.open(file.path) { |gz| gz.write(File.read(dataset)) }
