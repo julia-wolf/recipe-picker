@@ -93,6 +93,20 @@ RSpec.describe "Recipes", type: :request do
     expect(response.body).to include("Pantry staples: salt")
   end
 
+  it "does not list Pet Treats or Pet Food recipes" do
+    create_recipe(title: "Omelette", ingredients: [ "egg" ])
+    treats = create_recipe(title: "Dog biscuits", ingredients: [ "egg" ])
+    treats.update!(category: "Pet Treats")
+    kibble = create_recipe(title: "Kibble loaf", ingredients: [ "egg" ])
+    kibble.update!(category: "Pet Food")
+
+    browser_get recipes_path, ingredients: "egg"
+
+    expect(response.body).to include("Omelette")
+    expect(response.body).not_to include("Dog biscuits")
+    expect(response.body).not_to include("Kibble loaf")
+  end
+
   it "does not treat staples alone as a pantry search" do
     create_recipe(title: "Omelette", ingredients: [ "egg", "salt" ])
 

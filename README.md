@@ -100,6 +100,11 @@ Scenario: Almost-ready recipes fill leftover room
   And I see at most nine recipes in total
   And recipes missing 4 or more things are not offered
 
+Scenario: Pet recipes stay off the dinner list
+  Given a recipe is for pet treats or pet food
+  When results are shown
+  Then that recipe is not offered
+
 Scenario: I see what I still need and what is assumed
   Given a recipe is missing something
   When I look at the result

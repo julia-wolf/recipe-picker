@@ -129,6 +129,18 @@ RSpec.describe RecipeMatcher do
       expect(result.missing).to include("green bell pepper chopped", "cayenne pepper")
     end
 
+    it "excludes Pet Treats and Pet Food from results" do
+      dinner = create_recipe(title: "Omelette", ingredients: [ "egg" ])
+      treats = create_recipe(title: "Dog biscuits", ingredients: [ "egg" ])
+      treats.update!(category: "Pet Treats")
+      kibble = create_recipe(title: "Kibble loaf", ingredients: [ "egg" ])
+      kibble.update!(category: "Pet Food")
+      hot_dog = create_recipe(title: "Fair hot dog", ingredients: [ "egg" ])
+      hot_dog.update!(category: "Hot Dogs and Corn Dogs")
+
+      expect(described_class.search("egg").map(&:recipe)).to contain_exactly(dinner, hot_dog)
+    end
+
     it "does not query once per recipe when scoring matches" do
       3.times { |i| create_recipe(title: "Chicken #{i}", ingredients: [ "chicken", "onion" ]) }
 

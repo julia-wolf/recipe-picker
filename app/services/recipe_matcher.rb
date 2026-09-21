@@ -22,6 +22,7 @@ class RecipeMatcher
 
   DECISION_SET_SIZE = 9
   MAX_MISSING = 3
+  EXCLUDED_CATEGORIES = [ "Pet Treats", "Pet Food" ].freeze
 
   def self.search(query)
     new(query).search
@@ -97,7 +98,10 @@ class RecipeMatcher
 
   def matching_recipe_id_scope(matchable)
     ingredient_ids = Ingredient.where(normalized_name: matchable).select(:id)
-    RecipeIngredient.where(ingredient_id: ingredient_ids).select(:recipe_id)
+    recipe_ids = RecipeIngredient.where(ingredient_id: ingredient_ids).select(:recipe_id)
+    Recipe.where(id: recipe_ids)
+      .where("category IS NULL OR category NOT IN (?)", EXCLUDED_CATEGORIES)
+      .select(:id)
   end
 
   def ranked_decision_pairs(matchable, terms)
