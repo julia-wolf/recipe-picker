@@ -1,8 +1,6 @@
 class UnitConverter
   ML_PER_UNIT = {
     cup: 240,
-    tablespoon: 15,
-    teaspoon: 5,
     fluid_ounce: 30,
     pint: 473,
     quart: 946,
@@ -65,6 +63,8 @@ class UnitConverter
   private
 
   def to_g_from_cup_weight
+    return unless @parsed.unit == :cup
+
     ml = to_ml
     per_cup = grams_per_cup
     ml && per_cup && ml * per_cup / ML_PER_UNIT[:cup].to_f

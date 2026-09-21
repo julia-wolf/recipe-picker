@@ -1,94 +1,102 @@
 require "rails_helper"
 
 RSpec.describe IngredientParser do
-  def parse(raw)
-    described_class.parse(raw)
-  end
+  describe ".parse" do
+    subject(:result) { described_class.parse(raw) }
 
-  it "parses a simple cup measure" do
-    result = parse("1 cup all-purpose flour")
+    context "when the line is a simple cup measure" do
+      let(:raw) { "1 cup all-purpose flour" }
 
-    expect(result.quantity).to eq(1)
-    expect(result.unit).to eq(:cup)
-    expect(result.name).to eq("all-purpose flour")
-    expect(result.raw).to eq("1 cup all-purpose flour")
-  end
+      it "extracts quantity, unit, name, and the original line" do
+        expect(result).to have_attributes(
+          quantity: 1,
+          unit: :cup,
+          name: "all-purpose flour",
+          raw: "1 cup all-purpose flour"
+        )
+      end
+    end
 
-  it "parses mixed numbers with unicode fractions" do
-    result = parse("1 ½ cups water")
+    context "when the quantity is a mixed unicode fraction" do
+      let(:raw) { "1 ½ cups water" }
 
-    expect(result.quantity).to eq(3/2r)
-    expect(result.unit).to eq(:cup)
-    expect(result.name).to eq("water")
-  end
+      it { is_expected.to have_attributes(quantity: 3/2r, unit: :cup, name: "water") }
+    end
 
-  it "parses ascii mixed numbers" do
-    result = parse("1 1/2 cups water")
+    context "when the quantity is an ascii mixed number" do
+      let(:raw) { "1 1/2 cups water" }
 
-    expect(result.quantity).to eq(3/2r)
-    expect(result.unit).to eq(:cup)
-  end
+      it { is_expected.to have_attributes(quantity: 3/2r, unit: :cup) }
+    end
 
-  it "parses a leading decimal without a zero" do
-    result = parse(".666 cup milk")
+    context "when the quantity is a leading decimal without a zero" do
+      let(:raw) { ".666 cup milk" }
 
-    expect(result.quantity).to eq(0.666)
-    expect(result.unit).to eq(:cup)
-    expect(result.name).to eq("milk")
-  end
+      it { is_expected.to have_attributes(quantity: 0.666, unit: :cup, name: "milk") }
+    end
 
-  it "parses fractions that use a unicode fraction slash" do
-    result = parse("11 \u204416 cups water")
+    context "when the fraction uses a unicode fraction slash" do
+      let(:raw) { "11 \u204416 cups water" }
 
-    expect(result.quantity).to eq(11/16r)
-    expect(result.unit).to eq(:cup)
-    expect(result.name).to eq("water")
-  end
+      it { is_expected.to have_attributes(quantity: 11/16r, unit: :cup, name: "water") }
+    end
 
-  it "parses a leading unicode fraction" do
-    result = parse("½ cup white sugar")
+    context "when the quantity is a leading unicode fraction" do
+      let(:raw) { "½ cup white sugar" }
 
-    expect(result.quantity).to eq(1/2r)
-    expect(result.unit).to eq(:cup)
-    expect(result.name).to eq("white sugar")
-  end
+      it { is_expected.to have_attributes(quantity: 1/2r, unit: :cup, name: "white sugar") }
+    end
 
-  it "parses tablespoons and teaspoons" do
-    expect(parse("2 tablespoons olive oil").unit).to eq(:tablespoon)
-    expect(parse("¼ teaspoon salt").unit).to eq(:teaspoon)
-    expect(parse("¼ teaspoon salt").quantity).to eq(1/4r)
-  end
+    context "when the unit is a tablespoon" do
+      let(:raw) { "2 tablespoons olive oil" }
 
-  it "parses ounces and pounds" do
-    expect(parse("1 lb. potatoes").unit).to eq(:pound)
-    expect(parse("8 ounces cream cheese").unit).to eq(:ounce)
-  end
+      it { is_expected.to have_attributes(unit: :tablespoon) }
+    end
 
-  it "uses the parenthetical can size as the amount" do
-    result = parse("1 (14 ounce) can diced tomatoes")
+    context "when the unit is a teaspoon" do
+      let(:raw) { "¼ teaspoon salt" }
 
-    expect(result.quantity).to eq(14)
-    expect(result.unit).to eq(:ounce)
-    expect(result.name).to eq("diced tomatoes")
-  end
+      it { is_expected.to have_attributes(unit: :teaspoon, quantity: 1/4r) }
+    end
 
-  it "parses a count with no unit" do
-    result = parse("1 onion, chopped")
+    context "when the unit is a pound" do
+      let(:raw) { "1 lb. potatoes" }
 
-    expect(result.quantity).to eq(1)
-    expect(result.unit).to be_nil
-    expect(result.name).to eq("onion, chopped")
-  end
+      it { is_expected.to have_attributes(unit: :pound) }
+    end
 
-  it "returns the raw line when there is no quantity" do
-    result = parse("salt to taste")
+    context "when the unit is an ounce" do
+      let(:raw) { "8 ounces cream cheese" }
 
-    expect(result.quantity).to be_nil
-    expect(result.unit).to be_nil
-    expect(result.name).to eq("salt to taste")
-  end
+      it { is_expected.to have_attributes(unit: :ounce) }
+    end
 
-  it "strips a leading of after the unit" do
-    expect(parse("2 cups of bread flour").name).to eq("bread flour")
+    context "when the line has a parenthetical can size" do
+      let(:raw) { "1 (14 ounce) can diced tomatoes" }
+
+      it "uses the inner weight as the amount" do
+        expect(result).to have_attributes(quantity: 14, unit: :ounce, name: "diced tomatoes")
+      end
+    end
+
+    context "when the line is a count with no unit" do
+      let(:raw) { "1 onion, chopped" }
+
+      it { is_expected.to have_attributes(quantity: 1, unit: nil, name: "onion, chopped") }
+    end
+
+    context "when the name starts with of" do
+      let(:raw) { "2 cups of bread flour" }
+
+      it { is_expected.to have_attributes(name: "bread flour") }
+    end
+
+    context "when the line has no quantity" do
+      let(:raw) { "salt to taste" }
+
+      it "returns the raw line" do
+        expect(result).to have_attributes(quantity: nil, unit: nil, name: "salt to taste")
+      end
+    end
   end
 end

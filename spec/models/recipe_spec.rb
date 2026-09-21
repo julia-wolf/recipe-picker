@@ -1,15 +1,23 @@
 require "rails_helper"
 
-RSpec.describe Recipe do
-  it "has no total time when prep and cook are both zero" do
-    recipe = described_class.new(title: "Omelette", prep_time: 0, cook_time: 0)
+RSpec.describe Recipe, type: :model do
+  describe "#total_time" do
+    subject(:total_time) { recipe.total_time }
 
-    expect(recipe.total_time).to be_nil
-  end
+    let(:recipe) { described_class.new(title: "Omelette", prep_time:, cook_time:) }
 
-  it "adds prep and cook for ranking and display" do
-    recipe = described_class.new(title: "Omelette", prep_time: 5, cook_time: 10)
+    context "when prep and cook are zero" do
+      let(:prep_time) { 0 }
+      let(:cook_time) { 0 }
 
-    expect(recipe.total_time).to eq(15)
+      it { is_expected.to be_nil }
+    end
+
+    context "when prep and cook are present" do
+      let(:prep_time) { 5 }
+      let(:cook_time) { 10 }
+
+      it { is_expected.to eq(15) }
+    end
   end
 end
