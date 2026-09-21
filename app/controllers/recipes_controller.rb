@@ -7,7 +7,7 @@ class RecipesController < ApplicationController
 
   def show
     @recipe = Recipe.includes(recipe_ingredients: :ingredient).find(params[:id])
-    @explanation = RecipeMatcher.explain(@recipe, @ingredients)
+    @coverage = RecipeMatcher.coverage(@recipe, @ingredients)
   end
 
   private

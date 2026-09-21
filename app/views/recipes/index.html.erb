@@ -10,10 +10,10 @@
 <% end %>
 
 <% unless @ingredients.blank? || @search.staples_only? %>
-  <% if @search.empty? && @search.too_far? %>
-    <p><%= t(".empty.too_far", count: @search.terms.size) %></p>
+  <% if @search.empty? && @search.needs_more? %>
+    <p><%= t(".empty.too_far", count: @search.pantry_terms.size) %></p>
   <% elsif @search.empty? %>
-    <p><%= t(".empty.unknown", count: @search.terms.size) %></p>
+    <p><%= t(".empty.unknown", count: @search.pantry_terms.size) %></p>
   <% else %>
     <% if @search.cook_now.any? %>
       <section>

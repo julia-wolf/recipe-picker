@@ -10,20 +10,20 @@
   <p><%= line %></p>
 <% end %>
 
-<% if @explanation %>
-  <% if @explanation.have.any? %>
+<% if @coverage %>
+  <% if @coverage.have.any? %>
     <h2><%= t(".in_your_pantry") %></h2>
     <ul>
-      <% @explanation.have.each do |line| %>
+      <% @coverage.have.each do |line| %>
         <li><%= line %></li>
       <% end %>
     </ul>
   <% end %>
 
-  <% if @explanation.missing.any? %>
+  <% if @coverage.missing.any? %>
     <h2><%= t(".extra_ingredients") %></h2>
     <ul>
-      <% @explanation.missing.each do |line| %>
+      <% @coverage.missing.each do |line| %>
         <li><%= line %></li>
       <% end %>
     </ul>

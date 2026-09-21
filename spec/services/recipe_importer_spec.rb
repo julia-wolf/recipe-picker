@@ -33,10 +33,18 @@ RSpec.describe RecipeImporter do
   end
 
 
-  it "rejects a remote URL that is not the official dataset" do
+  it "rejects a remote URL that is not DATASET_URL" do
     expect {
       described_class.import("http://169.254.169.254/latest/meta-data/")
     }.to raise_error(ArgumentError, /official dataset/)
+  end
+
+  it "requires DATASET_URL" do
+    previous = ENV.delete("DATASET_URL")
+
+    expect { described_class.dataset_url }.to raise_error(KeyError, /DATASET_URL/)
+  ensure
+    previous.nil? ? ENV.delete("DATASET_URL") : ENV["DATASET_URL"] = previous
   end
 
   it "unwraps Meredith image proxy urls and leaves plain urls alone" do

@@ -160,12 +160,7 @@ bin/rails recipes:import
 bin/rails server
 ```
 
-`recipes:import` downloads the official gzip dataset. If S3 returns 403, download `recipes-en.json` locally (gitignored) and run:
-
-```bash
-bin/rails recipes:import[recipes-en.json]
-```
-
+`recipes:import` downloads the official gzip dataset.
 ```bash
 bin/rspec
 ```

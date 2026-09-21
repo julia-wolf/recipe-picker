@@ -6,11 +6,16 @@ require "uri"
 require "zlib"
 
 class RecipeImporter
-  DATASET_URL = "https://pennylane-interviewing-assets-20220328.s3.eu-west-1.amazonaws.com/recipes-en.json.gz".freeze
   BATCH_SIZE = 1_000
 
-  def self.import(source = DATASET_URL)
-    new(source).import
+  class << self
+    def dataset_url
+      ENV.fetch("DATASET_URL")
+    end
+
+    def import(source = dataset_url)
+      new(source).import
+    end
   end
 
   def initialize(source)
@@ -47,12 +52,11 @@ class RecipeImporter
 
   def fetch_remote
     uri = URI.parse(@source.to_s)
-    allowed = URI.parse(DATASET_URL)
-    unless uri.scheme == allowed.scheme && uri.host == allowed.host && uri.path == allowed.path
+    unless @source.to_s == self.class.dataset_url
       raise ArgumentError, "Remote import only supports the official dataset URL"
     end
 
-    response = http_get(uri, ssl_ca_file)
+    response = http_get(uri)
     unless response.is_a?(Net::HTTPSuccess)
       raise ArgumentError, "Could not download dataset (#{response.code}): #{@source}"
     end
@@ -60,21 +64,11 @@ class RecipeImporter
     response.body
   end
 
-  def http_get(uri, ca_file)
+  def http_get(uri)
     http = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl = true
     http.verify_mode = OpenSSL::SSL::VERIFY_PEER
-    http.ca_file = ca_file if ca_file
     http.request(Net::HTTP::Get.new(uri))
-  end
-
-  def ssl_ca_file
-    [
-      ENV["SSL_CERT_FILE"],
-      (OpenSSL::X509::DEFAULT_CERT_FILE rescue nil),
-      "/usr/local/etc/ca-certificates/cert.pem",
-      "/etc/ssl/cert.pem"
-    ].compact.find { |path| File.file?(path) }
   end
 
   def gzip?(bytes)
@@ -169,7 +163,7 @@ class RecipeImporter
 
   def build_line(raw)
     parsed = IngredientParser.parse(raw)
-    normalized_name = IngredientNormalizer.call(parsed.name)
+    normalized_name = IngredientNormalizer.normalize(parsed.name)
     return if normalized_name.blank?
 
     {
@@ -180,15 +174,15 @@ class RecipeImporter
   end
 
   def unique_ingredient_rows(parsed_recipes, now)
-    parsed_recipes.each_with_object({}) do |item, unique|
-      item[:lines].each do |line|
-        unique[line[:normalized_name]] ||= {
+    parsed_recipes.flat_map { |item| item[:lines] }
+      .uniq { |line| line[:normalized_name] }
+      .map { |line|
+        {
           name: line[:name],
           normalized_name: line[:normalized_name],
           created_at: now,
           updated_at: now
         }
-      end
-    end.values
+      }
   end
 end

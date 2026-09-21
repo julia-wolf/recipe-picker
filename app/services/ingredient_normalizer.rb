@@ -1,11 +1,11 @@
 class IngredientNormalizer
-  LEADING_AMOUNT = /\A\d+(?:[.,]\d+)?\s*/
+  class << self
+    def normalize(name)
+      name.to_s.downcase.gsub(/[^a-z0-9]+/, " ").squish.singularize
+    end
 
-  def self.call(name)
-    name.to_s.downcase.gsub(/[^a-z0-9]+/, " ").squish.singularize
-  end
-
-  def self.pantry(term)
-    call(term.to_s.sub(LEADING_AMOUNT, ""))
+    def without_amount(term)
+      normalize(term.to_s.sub(/\A\d+(?:[.,]\d+)?\s*/, ""))
+    end
   end
 end

@@ -14,7 +14,7 @@ RSpec.describe "Recipes", type: :request do
   end
 
   def add_ingredient(recipe, name)
-    ingredient = Ingredient.find_or_create_by!(normalized_name: IngredientNormalizer.call(name)) do |record|
+    ingredient = Ingredient.find_or_create_by!(normalized_name: IngredientNormalizer.normalize(name)) do |record|
       record.name = name
     end
     recipe.recipe_ingredients.create!(ingredient: ingredient, display_text: name)

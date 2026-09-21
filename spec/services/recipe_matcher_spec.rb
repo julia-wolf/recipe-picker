@@ -8,7 +8,7 @@ RSpec.describe RecipeMatcher do
   end
 
   def add_ingredient(recipe, name)
-    ingredient = Ingredient.find_or_create_by!(normalized_name: IngredientNormalizer.call(name)) do |record|
+    ingredient = Ingredient.find_or_create_by!(normalized_name: IngredientNormalizer.normalize(name)) do |record|
       record.name = name
     end
     recipe.recipe_ingredients.create!(ingredient: ingredient, display_text: name)
@@ -30,7 +30,7 @@ RSpec.describe RecipeMatcher do
 
       expect(described_class.search("")).to be_empty
       expect(described_class.search("   ")).to be_empty
-      expect(described_class.search("")).not_to be_too_far
+      expect(described_class.search("")).not_to be_needs_more
       expect(described_class.search("")).not_to be_staples_only
     end
 
@@ -220,16 +220,16 @@ RSpec.describe RecipeMatcher do
       search = described_class.search("tomato")
 
       expect(search).to be_empty
-      expect(search).to be_too_far
+      expect(search).to be_needs_more
     end
 
-    it "does not flag too_far when the exact pantry name is absent" do
+    it "does not flag needs_more when the exact pantry name is absent" do
       create_recipe(title: "Omelette", ingredients: [ "egg" ])
 
       search = described_class.search("chicken")
 
       expect(search).to be_empty
-      expect(search).not_to be_too_far
+      expect(search).not_to be_needs_more
     end
 
     it "splits pantry terms on commas or newlines" do
@@ -239,8 +239,8 @@ RSpec.describe RecipeMatcher do
     end
 
     it "exposes unique normalized pantry terms" do
-      expect(described_class.search("tomato, tomatoes\nbeef").terms).to eq([ "tomato", "beef" ])
-      expect(described_class.search("salt").terms).to eq([ "salt" ])
+      expect(described_class.search("tomato, tomatoes\nbeef").pantry_terms).to eq([ "tomato", "beef" ])
+      expect(described_class.search("salt").pantry_terms).to eq([ "salt" ])
     end
 
     it "does not pad a small Cook now set" do
@@ -292,18 +292,18 @@ RSpec.describe RecipeMatcher do
     end
   end
 
-  describe ".explain" do
+  describe ".coverage" do
     it "returns nil when the pantry has no matchable ingredients" do
       recipe = create_recipe(title: "Omelette", ingredients: [ "egg" ])
 
-      expect(described_class.explain(recipe, "")).to be_nil
-      expect(described_class.explain(recipe, "salt")).to be_nil
+      expect(described_class.coverage(recipe, "")).to be_nil
+      expect(described_class.coverage(recipe, "salt")).to be_nil
     end
 
-    it "explains have and missing for a recipe without ranking" do
+    it "returns have and missing for a recipe without ranking" do
       recipe = create_recipe(title: "Stir fry", ingredients: [ "chicken", "onion", "salt" ])
 
-      result = described_class.explain(recipe, "chicken")
+      result = described_class.coverage(recipe, "chicken")
 
       expect(result.recipe).to eq(recipe)
       expect(result.missing_count).to eq(1)

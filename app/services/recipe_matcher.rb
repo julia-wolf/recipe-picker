@@ -1,6 +1,6 @@
 class RecipeMatcher
-  STAPLES = [ "salt", "pepper", "water", "black pepper" ].map { |name|
-    IngredientNormalizer.call(name)
+  STAPLES = [ "black pepper", "salt", "pepper", "water" ].map { |name|
+    IngredientNormalizer.normalize(name)
   }.uniq.freeze
   STAPLE_FILLERS = %w[
     and or to taste more as needed
@@ -9,6 +9,10 @@ class RecipeMatcher
     kosher sea coarse coarsely fine cracked
     divided
   ].freeze
+  DECISION_SET_SIZE = 9
+  MIN_MISSING = 1
+  MAX_MISSING = 3
+  EXCLUDED_CATEGORIES = [ "Pet Treats", "Pet Food" ].freeze
 
   Result = Struct.new(:recipe, :missing_count, :have, :missing, :staples, keyword_init: true) do
     def cook_now?
@@ -16,11 +20,11 @@ class RecipeMatcher
     end
 
     def almost?
-      missing_count.between?(1, RecipeMatcher::MAX_MISSING)
+      missing_count.between?(MIN_MISSING, MAX_MISSING)
     end
   end
 
-  Search = Struct.new(:results, :too_far, :staples_only, :terms, keyword_init: true) do
+  Search = Struct.new(:results, :needs_more, :staples_only, :pantry_terms, keyword_init: true) do
     include Enumerable
 
     def each(...)
@@ -31,8 +35,13 @@ class RecipeMatcher
       results.empty?
     end
 
-    def too_far?
-      too_far
+    def size
+      results.size
+    end
+    alias length size
+
+    def needs_more?
+      needs_more
     end
 
     def staples_only?
@@ -48,92 +57,84 @@ class RecipeMatcher
     end
   end
 
-  DECISION_SET_SIZE = 9
-  MAX_MISSING = 3
-  EXCLUDED_CATEGORIES = [ "Pet Treats", "Pet Food" ].freeze
+  class << self
+    def search(ingredients)
+      new(ingredients).search
+    end
 
-  def self.search(query)
-    new(query).search
+    def coverage(recipe, ingredients)
+      new(ingredients).coverage(recipe)
+    end
   end
 
-  def self.explain(recipe, query)
-    new(query).explain(recipe)
-  end
-
-  def initialize(query)
-    @query = query
+  def initialize(ingredients)
+    @ingredients = ingredients
   end
 
   def search
-    terms = pantry_terms
-    matchable = terms.reject { |term| staple_name?(term) }
-    if matchable.empty?
-      return Search.new(results: [], too_far: false, staples_only: staples_only?, terms: terms)
+    if matchable_terms.empty?
+      return Search.new(
+        results: [],
+        needs_more: false,
+        staples_only: pantry_terms.any?,
+        pantry_terms: pantry_terms
+      )
     end
 
-    pairs, too_far = ranked_decision_pairs(matchable, terms)
-    recipes = recipes_for(pairs.map(&:first))
-    results = pairs.filter_map { |id, missing|
+    ids, needs_more = ranked_decision_ids
+    recipes = recipes_for(ids)
+    results = ids.filter_map { |id|
       recipe = recipes[id]
       next unless recipe
 
-      have, missing_lines, staples = coverage_for(recipe, terms)
+      have, missing, staples = coverage_for(recipe, pantry_terms)
       Result.new(
         recipe: recipe,
-        missing_count: missing.to_i,
+        missing_count: missing.size,
         have: have,
-        missing: missing_lines,
+        missing: missing,
         staples: staples
       )
     }
-    Search.new(results: decision_set(results), too_far: too_far, staples_only: false, terms: terms)
+    Search.new(results: results, needs_more: needs_more, staples_only: false, pantry_terms: pantry_terms)
   end
 
-  def explain(recipe)
-    terms = pantry_terms
-    return if terms.empty? || terms.all? { |term| staple_name?(term) }
+  def coverage(recipe)
+    return if matchable_terms.empty?
 
-    have, missing, staples = coverage_for(recipe, terms)
+    have, missing, staples = coverage_for(recipe, pantry_terms)
     Result.new(recipe: recipe, missing_count: missing.size, have: have, missing: missing, staples: staples)
   end
 
   private
 
-  def staples_only?
-    terms = pantry_terms
-    terms.any? && terms.all? { |term| staple_name?(term) }
-  end
-
-  def decision_set(results)
-    cook_now = results.select(&:cook_now?).first(DECISION_SET_SIZE)
-    remaining = DECISION_SET_SIZE - cook_now.size
-    almost = results.select(&:almost?).first(remaining)
-    cook_now + almost
-  end
-
   def pantry_terms
-    @query.to_s.split(/[,\n]/).map { |term|
-      IngredientNormalizer.pantry(term)
+    @pantry_terms ||= @ingredients.to_s.split(/[,\n]/).map { |term|
+      IngredientNormalizer.without_amount(term)
     }.reject(&:blank?).uniq
   end
 
-  def matching_recipe_id_scope(matchable)
-    ingredient_ids = Ingredient.where(normalized_name: matchable).select(:id)
+  def matchable_terms
+    @matchable_terms ||= pantry_terms.reject { |term| staple_name?(term) }
+  end
+
+  def candidate_recipe_ids(matchable_terms)
+    ingredient_ids = Ingredient.where(normalized_name: matchable_terms).select(:id)
     recipe_ids = RecipeIngredient.where(ingredient_id: ingredient_ids).select(:recipe_id)
     Recipe.where(id: recipe_ids)
       .where("category IS NULL OR category NOT IN (?)", EXCLUDED_CATEGORIES)
       .select(:id)
   end
 
-  def ranked_decision_pairs(matchable, terms)
-    excluded = (catalog_staples + terms).uniq
+  def ranked_decision_ids
+    covered_names = (catalog_staples + pantry_terms).uniq
     missing_sql = Recipe.sanitize_sql_array([
       "COUNT(ingredients.id) FILTER (WHERE ingredients.normalized_name NOT IN (?))",
-      excluded
+      covered_names
     ])
     unknown_sql = "CASE WHEN COALESCE(recipes.prep_time, 0) = 0 AND COALESCE(recipes.cook_time, 0) = 0 THEN 1 ELSE 0 END"
     time_sql = "(COALESCE(recipes.prep_time, 0) + COALESCE(recipes.cook_time, 0))"
-    candidate_ids = matching_recipe_id_scope(matchable)
+    candidate_ids = candidate_recipe_ids(matchable_terms)
 
     ranked = Recipe.where(id: candidate_ids)
       .joins(recipe_ingredients: :ingredient)
@@ -141,10 +142,10 @@ class RecipeMatcher
       .having("#{missing_sql} <= #{MAX_MISSING}")
       .order(Arel.sql("#{missing_sql} ASC, #{unknown_sql} ASC, #{time_sql} ASC, recipes.id ASC"))
       .limit(DECISION_SET_SIZE)
-      .pluck(Arel.sql("recipes.id"), Arel.sql(missing_sql))
+      .pluck(Arel.sql("recipes.id"))
 
-    too_far = ranked.empty? && Recipe.where(id: candidate_ids).exists?
-    [ ranked, too_far ]
+    needs_more = ranked.empty? && Recipe.where(id: candidate_ids).exists?
+    [ ranked, needs_more ]
   end
 
   def recipes_for(ids)
@@ -153,7 +154,7 @@ class RecipeMatcher
     Recipe.where(id: ids).includes(recipe_ingredients: :ingredient).index_by(&:id)
   end
 
-  def coverage_for(recipe, terms)
+  def coverage_for(recipe, pantry_terms)
     have = []
     missing = []
     staples = []
@@ -161,7 +162,7 @@ class RecipeMatcher
     recipe.recipe_ingredients.each do |line|
       name = line.ingredient.normalized_name
       treated_staple = staple_name?(name)
-      in_pantry = terms.include?(name)
+      in_pantry = pantry_terms.include?(name)
       if treated_staple
         have << line.display_text
         staples << line.display_text
@@ -187,7 +188,7 @@ class RecipeMatcher
     return false if name.blank?
 
     remaining = " #{name} "
-    STAPLES.sort_by { |staple| -staple.length }.each do |staple|
+    STAPLES.each do |staple|
       remaining.gsub!(/\s#{Regexp.escape(staple)}\s/, " ")
     end
     leftover = remaining.split - STAPLE_FILLERS
