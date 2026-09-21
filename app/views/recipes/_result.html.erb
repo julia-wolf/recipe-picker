@@ -9,7 +9,7 @@
       <% if result.staples.any? %>
         <p><%= t(".pantry_staples", list: result.staples.join(", ")) %></p>
       <% end %>
-      <p><%= recipe_time(result.recipe) %></p>
+      <p><%= recipe_time_lines(result.recipe).first %></p>
       <span class="recipe-open"><%= t(".see_recipe") %></span>
     </div>
   <% end %>

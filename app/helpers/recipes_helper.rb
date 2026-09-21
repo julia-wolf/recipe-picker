@@ -2,12 +2,12 @@ module RecipesHelper
   RECIPE_PHOTO_FALLBACK = "/recipe-placeholder.svg?v=2".freeze
 
   def recipe_photo_tag(recipe)
+    attrs = { alt: recipe.title, class: "recipe-photo" }
     url = recipe.image_url.presence
     if url
       image_tag(
         url,
-        alt: recipe.title,
-        class: "recipe-photo",
+        **attrs,
         data: {
           controller: "recipe-photo",
           recipe_photo_fallback_value: RECIPE_PHOTO_FALLBACK,
@@ -15,12 +15,8 @@ module RecipesHelper
         }
       )
     else
-      image_tag(RECIPE_PHOTO_FALLBACK, alt: recipe.title, class: "recipe-photo")
+      image_tag(RECIPE_PHOTO_FALLBACK, **attrs)
     end
-  end
-
-  def recipe_time(recipe)
-    recipe_time_lines(recipe).first
   end
 
   def recipe_time_lines(recipe)

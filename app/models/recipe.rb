@@ -5,10 +5,7 @@ class Recipe < ApplicationRecord
   validates :title, presence: true
 
   def total_time
-    prep = prep_time.to_i
-    cook = cook_time.to_i
-    return nil if prep.zero? && cook.zero?
-
-    prep + cook
+    total = prep_time.to_i + cook_time.to_i
+    total.positive? ? total : nil
   end
 end

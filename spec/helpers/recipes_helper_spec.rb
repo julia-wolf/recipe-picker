@@ -24,13 +24,13 @@ RSpec.describe RecipesHelper, type: :helper do
   it "says Time not listed when prep and cook are both zero" do
     recipe = Recipe.new(title: "Omelette", prep_time: 0, cook_time: 0)
 
-    expect(helper.recipe_time(recipe)).to eq(I18n.t("recipes.time.unknown"))
+    expect(helper.recipe_time_lines(recipe)).to eq([ I18n.t("recipes.time.unknown") ])
   end
 
   it "spells out minutes on result cards" do
     recipe = Recipe.new(title: "Omelette", prep_time: 10, cook_time: 10)
 
-    expect(helper.recipe_time(recipe)).to eq(I18n.t("recipes.time.ready_in", count: 20))
+    expect(helper.recipe_time_lines(recipe).first).to eq(I18n.t("recipes.time.ready_in", count: 20))
   end
 
   it "lists detailed times on separate lines" do
