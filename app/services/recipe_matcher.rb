@@ -20,6 +20,34 @@ class RecipeMatcher
     end
   end
 
+  Search = Struct.new(:results, :too_far, :staples_only, :terms, keyword_init: true) do
+    include Enumerable
+
+    def each(...)
+      results.each(...)
+    end
+
+    def empty?
+      results.empty?
+    end
+
+    def too_far?
+      too_far
+    end
+
+    def staples_only?
+      staples_only
+    end
+
+    def cook_now
+      results.select(&:cook_now?)
+    end
+
+    def almost
+      results.select(&:almost?)
+    end
+  end
+
   DECISION_SET_SIZE = 9
   MAX_MISSING = 3
   EXCLUDED_CATEGORIES = [ "Pet Treats", "Pet Food" ].freeze
@@ -32,30 +60,18 @@ class RecipeMatcher
     new(query).explain(recipe)
   end
 
-  def self.staples_only?(query)
-    new(query).staples_only?
-  end
-
   def initialize(query)
     @query = query
-    @too_far = false
-  end
-
-  def too_far?
-    @too_far
-  end
-
-  def staples_only?
-    terms = pantry_terms
-    terms.any? && terms.all? { |term| staple_name?(term) }
   end
 
   def search
     terms = pantry_terms
     matchable = terms.reject { |term| staple_name?(term) }
-    return [] if matchable.empty?
+    if matchable.empty?
+      return Search.new(results: [], too_far: false, staples_only: staples_only?, terms: terms)
+    end
 
-    pairs = ranked_decision_pairs(matchable, terms)
+    pairs, too_far = ranked_decision_pairs(matchable, terms)
     recipes = recipes_for(pairs.map(&:first))
     results = pairs.filter_map { |id, missing|
       recipe = recipes[id]
@@ -70,7 +86,7 @@ class RecipeMatcher
         staples: staples
       )
     }
-    decision_set(results)
+    Search.new(results: decision_set(results), too_far: too_far, staples_only: false, terms: terms)
   end
 
   def explain(recipe)
@@ -82,6 +98,11 @@ class RecipeMatcher
   end
 
   private
+
+  def staples_only?
+    terms = pantry_terms
+    terms.any? && terms.all? { |term| staple_name?(term) }
+  end
 
   def decision_set(results)
     cook_now = results.select(&:cook_now?).first(DECISION_SET_SIZE)
@@ -122,8 +143,8 @@ class RecipeMatcher
       .limit(DECISION_SET_SIZE)
       .pluck(Arel.sql("recipes.id"), Arel.sql(missing_sql))
 
-    @too_far = ranked.empty? && Recipe.where(id: candidate_ids).exists?
-    ranked
+    too_far = ranked.empty? && Recipe.where(id: candidate_ids).exists?
+    [ ranked, too_far ]
   end
 
   def recipes_for(ids)

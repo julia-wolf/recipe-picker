@@ -28,8 +28,10 @@ RSpec.describe RecipeMatcher do
     it "returns no results for a blank query" do
       create_recipe(title: "Omelette", ingredients: [ "egg" ])
 
-      expect(described_class.search("")).to eq([])
-      expect(described_class.search("   ")).to eq([])
+      expect(described_class.search("")).to be_empty
+      expect(described_class.search("   ")).to be_empty
+      expect(described_class.search("")).not_to be_too_far
+      expect(described_class.search("")).not_to be_staples_only
     end
 
     it "normalizes pantry terms before matching" do
@@ -214,24 +216,31 @@ RSpec.describe RecipeMatcher do
         title: "Stew",
         ingredients: [ "tomato", "beef", "onion", "carrot", "celery" ]
       )
-      matcher = described_class.new("tomato")
 
-      expect(matcher.search).to eq([])
-      expect(matcher).to be_too_far
+      search = described_class.search("tomato")
+
+      expect(search).to be_empty
+      expect(search).to be_too_far
     end
 
     it "does not flag too_far when the exact pantry name is absent" do
       create_recipe(title: "Omelette", ingredients: [ "egg" ])
-      matcher = described_class.new("chicken")
 
-      expect(matcher.search).to eq([])
-      expect(matcher).not_to be_too_far
+      search = described_class.search("chicken")
+
+      expect(search).to be_empty
+      expect(search).not_to be_too_far
     end
 
     it "splits pantry terms on commas or newlines" do
       recipe = create_recipe(title: "Stir fry", ingredients: [ "chicken", "onion" ])
 
       expect(described_class.search("chicken\nonion").map(&:recipe)).to eq([ recipe ])
+    end
+
+    it "exposes unique normalized pantry terms" do
+      expect(described_class.search("tomato, tomatoes\nbeef").terms).to eq([ "tomato", "beef" ])
+      expect(described_class.search("salt").terms).to eq([ "salt" ])
     end
 
     it "does not pad a small Cook now set" do
@@ -241,10 +250,10 @@ RSpec.describe RecipeMatcher do
     end
 
     it "treats a staples-only pantry as not a match query" do
-      expect(described_class).to be_staples_only("salt")
-      expect(described_class).to be_staples_only("black pepper, water")
-      expect(described_class).not_to be_staples_only("chicken")
-      expect(described_class).not_to be_staples_only("")
+      expect(described_class.search("salt")).to be_staples_only
+      expect(described_class.search("black pepper, water")).to be_staples_only
+      expect(described_class.search("chicken")).not_to be_staples_only
+      expect(described_class.search("")).not_to be_staples_only
     end
 
     it "keeps a hard cap of 9 when mixing cook-now and almost-ready recipes" do
