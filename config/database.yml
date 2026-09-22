@@ -84,21 +84,8 @@ test:
 # Read https://guides.rubyonrails.org/configuring.html#configuring-a-database
 # for a full overview on how database connection configuration can be specified.
 #
+# One Postgres in production (Heroku Mini). Rails 8's cache/queue/cable
+# databases are unused: no jobs, no Action Cable, memory cache.
 production:
-  primary: &primary_production
-    <<: *default
-    database: recipe_picker_production
-    username: recipe_picker
-    password: <%= ENV["RECIPE_PICKER_DATABASE_PASSWORD"] %>
-  cache:
-    <<: *primary_production
-    database: recipe_picker_production_cache
-    migrations_paths: db/cache_migrate
-  queue:
-    <<: *primary_production
-    database: recipe_picker_production_queue
-    migrations_paths: db/queue_migrate
-  cable:
-    <<: *primary_production
-    database: recipe_picker_production_cable
-    migrations_paths: db/cable_migrate
+  <<: *default
+  url: <%= ENV["DATABASE_URL"] %>
